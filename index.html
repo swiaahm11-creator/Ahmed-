@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="المنصة الرقمية لعائلة قدورة: السجل المدني وشجرة العائلة والتبرعات والتصويت والانتخابات">
+<meta name="theme-color" content="#0b1320">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'self'">
+<link rel="icon" href="data:,">
+<title>المنصة الرقمية لعائلة قدورة</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script>
+if (window.tailwind) tailwind.config = { theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] } } } };
+</script>
+<style>
+body{font-family:'Tajawal',sans-serif;background:radial-gradient(circle at top right,#0f172a,#0b1320,#030712);color:#f8fafc;min-height:100vh;overflow-x:hidden}
+.glass-panel{background:rgba(15,23,42,.92);backdrop-filter:blur(16px);border:1px solid rgba(245,158,11,.3);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.glass-card{background:rgba(30,41,59,.85);border:1px solid rgba(255,255,255,.08);transition:border-color .25s ease}
+.glass-card:hover{border-color:rgba(245,158,11,.5)}
+.gold-gradient-text{background:linear-gradient(135deg,#fbbf24 0%,#f59e0b 50%,#d97706 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.custom-scrollbar::-webkit-scrollbar{width:5px;height:5px}
+.custom-scrollbar::-webkit-scrollbar-track{background:rgba(15,23,42,.6)}
+.custom-scrollbar::-webkit-scrollbar-thumb{background:#f59e0b;border-radius:4px}
+details>summary{list-style:none;cursor:pointer}
+details>summary::-webkit-details-marker{display:none}
+details[open]>summary .chev{transform:rotate(-90deg)}
+.chev{transition:transform .2s}
+.tree-children{margin-right:14px;padding-right:12px;border-right:2px solid rgba(245,158,11,.35)}
+.fld{width:100%;background:#0f172a;border:1px solid #334155;border-radius:.75rem;padding:.5rem .75rem;font-size:.75rem;color:#fff}
+.fld:focus{outline:none;border-color:#f59e0b}
+.hidden{display:none!important}
+button{cursor:pointer}
+@media print{
+.no-print{display:none!important}
+body{background:#fff!important;color:#000!important}
+.glass-panel,.glass-card{background:#fff!important;border:1px solid #ccc!important;box-shadow:none!important}
+.gold-gradient-text{-webkit-text-fill-color:#000!important;color:#000!important}
+*{color:#000!important}
+}
+</style>
+</head>
+<body class="flex flex-col min-h-screen custom-scrollbar">
+
+<!-- شاشة الدخول -->
+<div id="loginModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-50 flex items-center justify-center p-4 no-print">
+  <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+    <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto text-2xl"><i class="fas fa-users"></i></div>
+    <div>
+      <h2 class="text-xl font-black gold-gradient-text">المنصة الرقمية عائلة قدورة</h2>
+      <p class="text-[11px] text-amber-200/90 mt-1">جذور تضرب في عمق التاريخ، وحاضر يبنى بسواعد الأبناء</p>
+    </div>
+    <p id="loginLoading" class="text-[11px] text-slate-300"><i class="fas fa-spinner fa-spin ml-1"></i> جارٍ تحميل البيانات...</p>
+    <form id="loginForm" class="space-y-3 text-right hidden" autocomplete="off">
+      <div>
+        <label for="loginUserSelect" class="block text-[11px] text-slate-300 mb-1">اختر اسم المستخدم / الهوية:</label>
+        <select id="loginUserSelect" class="fld"></select>
+      </div>
+      <div id="passWrap">
+        <label for="loginPasswordInput" id="passLabel" class="block text-[11px] text-slate-300 mb-1">كلمة المرور:</label>
+        <div class="relative">
+          <input type="password" id="loginPasswordInput" placeholder="أدخل كلمة المرور..." class="fld" style="padding-left:2.5rem" autocomplete="current-password">
+          <button type="button" data-act="togglePw" class="absolute left-3 top-2.5 text-slate-400 hover:text-amber-400 text-xs" aria-label="إظهار/إخفاء كلمة المرور"><i id="togglePassIcon" class="fas fa-eye"></i></button>
+        </div>
+      </div>
+      <div id="confirmWrap" class="hidden">
+        <label for="loginPassword2" class="block text-[11px] text-slate-300 mb-1">أعد كتابة كلمة المرور:</label>
+        <input type="password" id="loginPassword2" class="fld" autocomplete="new-password" placeholder="تأكيد كلمة المرور">
+      </div>
+      <p id="storageWarn" class="text-[11px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl p-2 hidden">متصفحك يمنع حفظ البيانات (قد تكون نافذة معاينة أو وضعًا خاصًا). سيعمل الموقع لكن دون حفظ بعد الإغلاق. للحفظ افتح الملف مباشرة في Chrome أو Edge.</p>
+      <p id="loginHint" class="text-[11px] text-amber-300 hidden"></p>
+      <p id="loginErrorMsg" class="text-[11px] text-red-400 hidden"></p>
+      <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition shadow-lg text-xs flex items-center justify-center gap-2">
+        <i class="fas fa-sign-in-alt"></i> <span id="loginBtnText">تسجيل الدخول</span>
+      </button>
+      <button type="button" id="reqLink" data-act="reqAccess" class="hidden w-full text-[11px] text-emerald-300 hover:text-emerald-200 underline"><i class="fas fa-user-plus ml-1"></i>ليس لديك حساب؟ اطلب الانضمام (يوافق عليه المسؤول)</button>
+      <button type="button" id="forgotLink" data-act="forgot" class="w-full text-[11px] text-amber-300 hover:text-amber-200 underline"><span id="forgotText">نسيت كلمة المرور؟</span></button>
+      <button type="button" id="resetLink" data-act="resetLocal" class="w-full text-[11px] text-slate-500 hover:text-amber-300 underline hidden">إعادة ضبط البيانات المحلية (الوضع المحلي فقط)</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-4 left-4 z-[80] text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 transform translate-y-20 opacity-0 transition-all duration-300 no-print text-xs bg-emerald-600" role="status">
+  <i id="toastIcon" class="fas fa-check-circle text-amber-300"></i><span id="toastMsg"></span>
+</div>
+
+<header class="glass-panel sticky top-0 z-40 px-3 py-2.5 shadow-xl no-print">
+  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+    <div class="text-center sm:text-right w-full sm:w-auto">
+      <h1 class="text-base sm:text-lg font-black gold-gradient-text whitespace-nowrap">المنصة الرقمية عائلة قدورة</h1>
+      <p class="text-[10px] text-amber-200/90">جذور تضرب في عمق التاريخ، وحاضر يبنى بسواعد الأبناء</p>
+    </div>
+    <div class="flex items-center flex-wrap justify-center gap-2 w-full sm:w-auto">
+      <div class="flex items-center bg-slate-900/90 px-2.5 py-1 rounded-xl border border-amber-500/30 text-[11px]">
+        <i class="fas fa-user-circle text-amber-400 ml-1.5"></i>
+        <span class="text-slate-300 ml-1">المستخدم:</span>
+        <span id="currentRoleBadge" class="font-bold text-amber-400">—</span>
+        <span id="connDot" class="w-2 h-2 rounded-full inline-block bg-slate-500 mr-1.5" title="محلي"></span>
+        <button data-act="logout" class="mr-2 text-[10px] bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 px-2 py-0.5 rounded-lg border border-amber-500/40 transition">تبديل / خروج</button>
+      </div>
+      <button data-act="myAccount" id="btnAccount" class="hidden bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1"><i class="fas fa-user-cog"></i> حسابي</button>
+      <button data-act="print" class="bg-amber-600 hover:bg-amber-500 text-slate-950 px-3 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow"><i class="fas fa-print"></i> طباعة</button>
+    </div>
+  </div>
+  <nav class="max-w-7xl mx-auto mt-2 border-t border-slate-800/80 pt-1.5 overflow-x-auto custom-scrollbar" aria-label="التنقل">
+    <div id="navBar" class="flex items-center gap-1.5 pb-1 text-[11px] font-semibold min-w-max"></div>
+  </nav>
+</header>
+
+<main id="pageRoot" class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-5 space-y-4 text-xs"></main>
+<footer class="text-center text-[10px] text-slate-500 py-3 no-print">المنصة الرقمية لعائلة قدورة — <span id="modeLabel"></span></footer>
+
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+<div id="recRoot"></div>
+
+<script>
+/* إعدادات مشروع Firebase الخاص بك. هذه القيم معرّفات عامة بطبيعتها (وليست كلمات سر)،
+   والذي يحمي البيانات هو قواعد قاعدة البيانات في لوحة Firebase. */
+window.QADOURA_FIREBASE = {
+  apiKey: "AIzaSyDuAtl7bCxrlHQB2eXLuYNW8xi-BGtYdy8",
+  authDomain: "ahmed-kdor.firebaseapp.com",
+  databaseURL: "https://ahmed-kdor-default-rtdb.firebaseio.com",
+  projectId: "ahmed-kdor",
+  storageBucket: "ahmed-kdor.firebasestorage.app",
+  messagingSenderId: "702670826976",
+  appId: "1:702670826976:web:34b76e3795ac4109548f85"
+};
+</script>
+<script>
+'use strict';
+/* window.__FORCE_LOCAL يُستخدم في الاختبارات الآلية فقط */
+const FIREBASE_CONFIG = window.__FORCE_LOCAL ? null : (window.QADOURA_FIREBASE || null);
+const ROOT = 'qadoura_v2';
+
+/* ---------- أدوات عامة ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const safeUrl = (u, img) => {
+  u = String(u || '').trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  if (img && /^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u)) return u;
+  return '';
+};
+const NOW = () => (DB.mode === 'cloud' && window.firebase && firebase.database && firebase.database.ServerValue) ? firebase.database.ServerValue.TIMESTAMP : Date.now();
+const APPROVAL = new Set(['members', 'funds', 'events', 'meetings', 'ballots', 'honors', 'memories']);
+const NONLEAF = new Set(['fund', 'events', 'meetings', 'ballots']);
+const needsReview = () => DB.mode === 'cloud' && role() !== 'admin';
+const clean = o => { Object.keys(o).forEach(k => { if (o[k] === '' || o[k] == null) delete o[k]; }); return o; };
+const fnum = n => (+n || 0).toLocaleString('en-US');
+const fdate = d => { if (!d) return ''; const x = new Date(String(d).length === 10 ? d + 'T00:00' : d); return isNaN(x) ? '' : x.toLocaleDateString('ar-EG-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' }); };
+const fdt = d => { const x = new Date(d); return isNaN(x) ? '' : fdate(d) + ' — ' + x.toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit' }); };
+const year = d => d ? +String(d).slice(0, 4) : null;
+const todayStr = () => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+const daysTo = d => { const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(String(d).slice(0, 10) + 'T00:00') - t) / 864e5); };
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const t = $('#toast'); if (!t) return;
+  $('#toastMsg').textContent = msg;
+  t.classList.toggle('bg-emerald-600', type !== 'err');
+  t.classList.toggle('bg-red-600', type === 'err');
+  $('#toastIcon').className = 'fas ' + (type === 'err' ? 'fa-exclamation-circle' : 'fa-check-circle') + ' text-amber-300';
+  t.classList.remove('translate-y-20', 'opacity-0');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
+}
+window.addEventListener('error', e => { console.error(e.error || e.message); });
+
+/* تخزين آمن: يعمل حتى لو منع المتصفح التخزين (معاينة داخل تطبيق / وضع خاص) */
+let storageOK = true;
+try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); sessionStorage.setItem('__t', '1'); sessionStorage.removeItem('__t'); } catch (e) { storageOK = false; }
+const mem = {};
+const SS = {
+  get(k) { try { return sessionStorage.getItem(k); } catch (e) { return mem[k] ?? null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { mem[k] = v; } },
+  del(k) { try { sessionStorage.removeItem(k); } catch (e) { delete mem[k]; } }
+};
+
+/* ---------- طبقة البيانات: Firebase أو تخزين محلي ---------- */
+const DB = (() => {
+  let data = {}, fb = null, cb = () => {};
+  const LS = 'qadoura_db_v2';
+  const setPath = (o, p, v) => {
+    const k = p.split('/'); let c = o;
+    if (k.some(x => BAD_KEYS.has(x))) return;
+    for (let i = 0; i < k.length - 1; i++) { if (typeof c[k[i]] !== 'object' || c[k[i]] === null) c[k[i]] = {}; c = c[k[i]]; }
+    if (v == null) delete c[k[k.length - 1]]; else c[k[k.length - 1]] = v;
+  };
+  const save = () => { try { localStorage.setItem(LS, JSON.stringify(data)); } catch (e) { if (storageOK) toast('تعذّر الحفظ: مساحة التخزين ممتلئة', 'err'); } };
+  return {
+    mode: 'local',
+    reattach() { return Promise.resolve(); },
+    init(onChange) {
+      cb = onChange;
+      if (FIREBASE_CONFIG) {
+        /* وضع السحابة: لا نرجع للوضع المحلي أبدًا حتى لا تتشتت بيانات العائلة بين أجهزة منفصلة */
+        const fail = msg => { const l = $('#loginLoading'); if (l) { l.classList.remove('hidden'); l.innerHTML = '<i class="fas fa-exclamation-triangle ml-1 text-red-400"></i> ' + esc(msg); } $('#loginForm').classList.add('hidden'); };
+        if (!window.firebase) return fail('تعذّر تحميل مكتبة Firebase. تحقق من الإنترنت ثم أعد تحميل الصفحة.');
+        try {
+          if (!FIREBASE_CONFIG.databaseURL) return fail('إعدادات Firebase تنقصها databaseURL.');
+          if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+          fb = firebase.database().ref(ROOT); this.mode = 'cloud';
+          try { firebase.database().ref('.info/connected').on('value', s => setConn(!!s.val())); } catch (e) { }
+          const timer = setTimeout(() => fail('تعذّر الاتصال بقاعدة البيانات. تحقق من الإنترنت ومن إعدادات Firebase وقواعد قاعدة البيانات.'), 12000);
+          const nodes = () => ['users', 'meta', 'audit', 'requests', ...Object.values(MODS).map(m => m.node)];
+          let refs = [];
+          const attach = () => {
+            refs.forEach(([r, f]) => { try { r.off('value', f); } catch (e) { } }); refs = [];
+            const list = nodes(), seen = new Set(); let ready = false;
+            return new Promise(res => {
+              const mark = k => { if (!seen.has(k)) { seen.add(k); if (seen.size === list.length) { ready = true; clearTimeout(timer); res(); cb(); } } };
+              list.forEach(k => {
+                const r = fb.child(k);
+                const f = r.on('value', s => { const v = s.val(); if (v == null) delete data[k]; else data[k] = v; mark(k); if (ready) cb(); },
+                  err => { delete data[k]; if (k === 'users' && !ready) { clearTimeout(timer); fail('رفضت قاعدة البيانات الاتصال (' + (err && err.code || 'خطأ') + '). تأكد من نشر القواعد ومن تفعيل Anonymous وEmail/Password في Authentication ← Sign-in method.'); } mark(k); if (ready) cb(); });
+                refs.push([r, f]);
+              });
+            });
+          };
+          this.reattach = () => attach();
+          attach();
+        } catch (e) { console.error(e); fail('إعدادات Firebase غير صحيحة: ' + (e && e.message || e)); }
+        return;
+      }
+      try { data = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { data = {}; }
+      window.addEventListener('storage', e => { if (e.key === LS) { try { data = JSON.parse(e.newValue || '{}') || {}; } catch (_) { } cb(); } });
+      setTimeout(cb, 0);
+    },
+    get: p => p.split('/').reduce((o, k) => (o == null || BAD_KEYS.has(k) ? undefined : o[k]), data),
+    set(p, v) {
+      v = v == null ? null : JSON.parse(JSON.stringify(v));
+      if (fb) fb.child(p).set(v).catch(e => toast('فشل الحفظ: ' + e.message, 'err'));
+      else { setPath(data, p, v); save(); cb(); }
+    },
+    remove(p) { this.set(p, null); },
+    async setSafe(p, v) {
+      v = JSON.parse(JSON.stringify(v));
+      if (fb) return fb.child(p).set(v);
+      setPath(data, p, v); save(); cb();
+    },
+    /* كتابة ذرّية: تنجح فقط إن لم تكن القيمة موجودة (تمنع تسابق جهازين على نفس العقدة) */
+    async setIfAbsent(p, v) {
+      v = JSON.parse(JSON.stringify(v));
+      if (fb) { const r = await fb.child(p).transaction(cur => (cur == null ? v : undefined)); return !!r.committed; }
+      if (this.get(p) != null) return false;
+      setPath(data, p, v); save(); cb(); return true;
+    },
+    inc(p) { if (fb) fb.child(p).transaction(n => (n || 0) + 1); else this.set(p, (this.get(p) || 0) + 1); },
+    replaceCollections(obj) {
+      const keep = {}; ['users', 'audit', 'meta'].forEach(k => { if (data[k]) keep[k] = data[k]; });
+      const all = { ...obj, ...keep };
+      if (fb) { const up = {}; Object.values(MODS).forEach(m => { up[m.node] = obj[m.node] || null; }); fb.update(up).catch(e => toast('فشل الاستيراد: ' + e.message, 'err')); } else { data = all; save(); cb(); }
+    }
+  };
+})();
+
+const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const col = n => { const o = DB.get(n) || {}; const hide = APPROVAL.has(n) && role() !== 'admin'; return Object.keys(o).filter(id => !BAD_KEYS.has(id)).map(id => ({ id, ...o[id] })).filter(x => !(hide && x.status === 'pending')); };
+/* مؤشر الاتصال: true متصل، false غير متصل، null وضع محلي */
+function setConn(ok) {
+  const d = $('#connDot'); if (!d) return;
+  d.className = 'w-2 h-2 rounded-full inline-block mr-1.5 ' + (ok === null ? 'bg-slate-500' : ok ? 'bg-emerald-400' : 'bg-red-500 animate-pulse');
+  d.title = ok === null ? 'وضع محلي: البيانات في هذا المتصفح فقط' : ok ? 'متصل بالسحابة' : 'غير متصل: ستُرسل تعديلاتك عند عودة الاتصال';
+}
+const byId = (n, id) => { const v = DB.get(n + '/' + id); return v ? { id, ...v } : null; };
+const members = () => col('members');
+const uname = id => (DB.get('users/' + id) || {}).name || (id === 'visitor' ? 'زائر' : '—');
+
+/* ---------- الهوية والصلاحيات ---------- */
+const MODS = {
+  registry: { node: 'members', name: 'السجل المدني والشجرة' },
+  fund: { node: 'funds', name: 'التبرعات والجمعيات' },
+  events: { node: 'events', name: 'المناسبات والفرق' },
+  meetings: { node: 'meetings', name: 'الاجتماعات' },
+  ballots: { node: 'ballots', name: 'التصويت والانتخابات' },
+  honors: { node: 'honors', name: 'لوحة الشرف' },
+  chat: { node: 'chat', name: 'الدردشة' },
+  memories: { node: 'memories', name: 'الذكريات والوسائط' }
+};
+const SEED_NAMES = ['أحمد قدورة', 'محمود قدورة', 'محمد قدورة', 'علي أحمد قدورة', 'خالد قدورة', 'إبراهيم قدورة', 'عمر قدورة', 'يوسف قدورة', 'حسن قدورة', 'حسين قدورة', 'عبدالله قدورة', 'عبدالرحمن قدورة', 'حمزة قدورة', 'بلال قدورة', 'طارق قدورة', 'سعد قدورة', 'سليم قدورة', 'زياد قدورة', 'مصطفى قدورة', 'مهند قدورة'];
+let me = null;
+const role = () => !me ? 'visitor' : me.id === 'visitor' ? 'visitor' : ((DB.get('users/' + me.id) || {}).role || 'member');
+function can(mod, act, item) {
+  const r = role();
+  if (r === 'admin') return true;
+  if (r === 'visitor' || !me) return false;
+  if (DB.mode === 'cloud' && ((act === 'edit' && NONLEAF.has(mod)) || (act === 'del' && mod === 'fund'))) return false;
+  const ov = DB.get(`users/${me.id}/perms/${mod}/${act}`);
+  if (ov === true || ov === false) return ov;
+  if (act === 'add') return mod !== 'ballots';
+  if (act === 'edit') return !!item && item.by === me.id;
+  if (act === 'del') return !!item && item.by === me.id && (mod === 'chat' || mod === 'memories');
+  return false;
+}
+/* ---------- كلمات المرور: PBKDF2 مع ترحيل الصيغة القديمة تلقائيًا ---------- */
+const PBKDF2_ITER = 150000, MINPW = 8;
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const randHex = n => hex(crypto.getRandomValues(new Uint8Array(n)));
+async function sha(s) {
+  if (window.crypto && crypto.subtle) return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+  let h = 5381; for (const c of s) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0; return 'x' + h.toString(16);
+}
+async function pbkdf2(pw, salt, iter) {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: iter }, k, 256));
+}
+async function makeCred(pw) {
+  const salt = randHex(16);
+  if (window.crypto && crypto.subtle) return { algo: 'p2', iter: PBKDF2_ITER, salt, hash: await pbkdf2(pw, salt, PBKDF2_ITER) };
+  return { algo: 'sha', salt, hash: await sha(salt + pw) };
+}
+const credOf = u => !u ? null : (u.cred || (u.hash ? { algo: 'sha', salt: u.salt, hash: u.hash } : null));
+const hasCred = u => !!(credOf(u) || (u && u.akey));
+function same(a, b) { a = String(a); b = String(b); if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
+async function checkCred(c, pw) {
+  if (!c || !c.hash) return false;
+  return same(c.algo === 'p2' ? await pbkdf2(pw, c.salt, c.iter || PBKDF2_ITER) : await sha(c.salt + pw), c.hash);
+}
+const AUTH_DOM = 'qadoura-family.app';
+/* في السحابة: لكل عضو حساب Firebase Auth باسم مستعار (لا نخزّن أي كلمات مرور في قاعدة البيانات) */
+async function cloudMemberPassword(id, pw) {
+  let sec; try { sec = firebase.app('sec'); } catch (e) { sec = firebase.initializeApp(FIREBASE_CONFIG, 'sec'); }
+  const akey = id + '-' + randHex(4);
+  const cr = await sec.auth().createUserWithEmailAndPassword(akey + '@' + AUTH_DOM, pw);
+  const uidNew = cr.user.uid; try { await sec.auth().signOut(); } catch (e) { }
+  const oldUid = DB.get(`users/${id}/uid`);
+  DB.set('uids/' + uidNew, id); DB.set(`users/${id}/akey`, akey); DB.set(`users/${id}/uid`, uidNew);
+  if (oldUid) DB.remove('uids/' + oldUid);
+}
+async function setPassword(id, pw) {
+  if (DB.mode === 'cloud') return cloudMemberPassword(id, pw);
+  DB.set(`users/${id}/cred`, await makeCred(pw));
+  if (DB.get(`users/${id}/hash`) != null) { DB.remove(`users/${id}/hash`); DB.remove(`users/${id}/salt`); }
+}
+/* تحديد المحاولات الفاشلة (على مستوى المتصفح) */
+const isLocked = () => Date.now() < +(SS.get('qd_lock') || 0);
+function failAdd() { let n = (+SS.get('qd_fails') || 0) + 1; if (n >= 5) { SS.set('qd_lock', String(Date.now() + 30000)); n = 0; } SS.set('qd_fails', String(n)); }
+const failReset = () => SS.set('qd_fails', '0');
+
+/* ---------- رمز استرداد المسؤول ---------- */
+const RC_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const normCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function genCode() { let s = ''; for (const x of crypto.getRandomValues(new Uint8Array(20))) s += RC_ALPHA[x % RC_ALPHA.length]; return s.match(/.{4}/g).join('-'); }
+async function issueRecovery(id) { const code = genCode(); DB.set(`users/${id}/rec`, await makeCred(normCode(code))); return code; }
+let recCurrent = null;
+function showRecovery(code, who) {
+  recCurrent = { code, who };
+  $('#recRoot').innerHTML = `<div class="fixed inset-0 z-[75] bg-black/80 flex items-center justify-center p-3"><div class="glass-panel rounded-2xl w-full max-w-md p-5 space-y-3" role="alertdialog" aria-modal="true"><h3 class="font-bold text-amber-400 text-sm"><i class="fas fa-life-ring ml-2"></i>رمز استرداد كلمة المرور</h3><p class="text-[12px] text-slate-200 leading-relaxed">احتفظ بهذا الرمز <b>خارج الموقع</b> (ورقة، صورة شاشة، أو مدير كلمات مرور). به وحده تستعيد حساب «${esc(who)}» إذا نسيت كلمة المرور. <b class="text-red-300">لن يظهر مرة أخرى.</b></p><div dir="ltr" class="select-all text-center font-mono text-lg tracking-wider bg-slate-900 border border-amber-500/40 rounded-xl py-3 text-amber-300">${esc(code)}</div><div class="flex gap-2"><button data-act="recCopy" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded-xl"><i class="fas fa-copy ml-1"></i>نسخ</button><button data-act="recDl" class="flex-1 bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded-xl"><i class="fas fa-download ml-1"></i>تنزيل كملف</button></div><label class="flex items-center gap-2 text-[12px] text-slate-200"><input type="checkbox" id="recOk" data-chg="recOk"> حفظت الرمز في مكان آمن</label><button id="recDone" data-act="recDone" disabled class="w-full bg-amber-500 text-slate-950 font-bold text-xs py-2.5 rounded-xl opacity-40">متابعة</button></div></div>`;
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) { }
+  try { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; } catch (e) { return false; }
+}
+const ADMIN_EMAIL = 'swiaahm11@gmail.com';
+const maskedEmail = ADMIN_EMAIL.replace(/^(.).*(@.*)$/, '$1***$2');
+const cloudAdmin = id => DB.mode === 'cloud' && id === 'admin';
+const authErr = e => ({ 'auth/network-request-failed': 'تعذّر الاتصال بالإنترنت', 'auth/too-many-requests': 'محاولات كثيرة، انتظر قليلًا ثم أعد المحاولة', 'auth/operation-not-allowed': 'لم يُفعَّل تسجيل الدخول بالبريد في Firebase (Authentication ثم Sign-in method ثم Email/Password)', 'auth/invalid-credential': 'كلمة المرور غير صحيحة', 'auth/wrong-password': 'كلمة المرور غير صحيحة', 'auth/user-not-found': 'كلمة المرور غير صحيحة' }[e && e.code] || (e && e.message) || 'خطأ غير معروف');
+/* يُنشئ حساب المسؤول عند أول استخدام (بكلمة عشوائية) ثم يرسل رابط تعيين كلمة المرور إلى البريد */
+async function adminMailSetup() {
+  const a = firebase.auth();
+  try { await a.createUserWithEmailAndPassword(ADMIN_EMAIL, randHex(24) + 'Aa1'); }
+  catch (e) { if (e.code !== 'auth/email-already-in-use') throw e; }
+  try { await a.signOut(); } catch (e) { }
+  await a.sendPasswordResetEmail(ADMIN_EMAIL);
+}
+function seedUsers() {
+  DB.setIfAbsent('users/admin', { name: 'مسؤول النظام', role: 'admin' });
+  if (DB.mode !== 'cloud') SEED_NAMES.forEach((n, i) => DB.setIfAbsent('users/u' + (i + 1), { name: n, role: 'member' }));
+}
+function seedMembersCloud() {
+  if (DB.mode !== 'cloud' || role() !== 'admin' || DB.get('meta/seeded')) return;
+  SEED_NAMES.forEach((n, i) => DB.setIfAbsent('users/u' + (i + 1), { name: n, role: 'member' }));
+  DB.set('meta/seeded', true);
+}
+function infoBox(title, html) {
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><div class="glass-panel rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-4 space-y-3" role="dialog" aria-modal="true"><div class="flex justify-between"><h3 class="font-bold text-amber-400 text-sm">${esc(title)}</h3><button data-act="closeModal" aria-label="إغلاق" class="text-slate-400"><i class="fas fa-times"></i></button></div><div class="text-[12px] text-slate-200 leading-relaxed space-y-2">${html}</div><button data-act="closeModal" class="w-full bg-slate-700 text-xs py-2 rounded-xl">حسنًا</button></div></div>`;
+}
+
+/* ---------- سجل التدقيق ---------- */
+function log(action, mod, detail) {
+  if (!me) return;
+  DB.set('audit/' + uid(), { ts: NOW(), by: me.id, name: uname(me.id), action, mod, detail: String(detail || '').slice(0, 150) });
+  const a = DB.get('audit') || {}, ks = Object.keys(a);
+  if (ks.length > 600 && role() === 'admin') ks.sort((x, y) => a[x].ts - a[y].ts).slice(0, ks.length - 500).forEach(k => DB.remove('audit/' + k));
+}
+
+/* ---------- حالة الواجهة ---------- */
+const ui = { page: 'stats', q: { registry: '', tree: '', directory: '' }, os: {}, lastRole: null, auditMod: '', ff: {}, sel: {}, mt: 'ballots', bf: 'all' };
+const root = () => $('#pageRoot');
+const pc = () => $('#pc');
+const isOpen = (k, def) => ui.os[k] === undefined ? def : ui.os[k];
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.k) ui.os[d.dataset.k] = d.open; }, true);
+
+const hd = (icon, title, sub, right = '') => `<div class="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><h2 class="text-sm sm:text-base font-bold text-amber-400"><i class="fas ${icon} ml-2"></i>${esc(title)}</h2><p class="text-[11px] text-slate-300">${esc(sub)}</p></div><div class="flex gap-2 flex-wrap items-center no-print">${right}</div></div>`;
+const addBtn = (mod, act, label) => can(mod, 'add') ? `<button data-act="${act}" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl"><i class="fas fa-plus ml-1"></i>${label}</button>` : '';
+const empty = t => `<div class="glass-card rounded-2xl p-6 text-center text-slate-400">${esc(t)}</div>`;
+const btn = (act, id, icon, title, cls = 'text-slate-300 hover:text-amber-400', extra = '') => `<button data-act="${act}" data-id="${esc(id)}" ${extra} title="${title}" aria-label="${title}" class="${cls} px-1.5 no-print"><i class="fas ${icon}"></i></button>`;
+const editDel = (mod, editAct, delAct, it) => (can(mod, 'edit', it) ? btn(editAct, it.id, 'fa-pen', 'تعديل') : '') + (can(mod, 'del', it) ? btn(delAct, it.id, 'fa-trash', 'حذف', 'text-red-400 hover:text-red-300') : '');
+const searchBox = (key, ph) => `<input type="search" data-inp="${key}" value="${esc(ui.q[key] || '')}" placeholder="${ph}" aria-label="${ph}" class="fld sm:w-60">`;
+
+/* ---------- نافذة النموذج العامة ---------- */
+function closeModal() { $('#modalRoot').innerHTML = ''; }
+function formErr(m) { const e = $('#formErr'); if (e) { e.textContent = m; e.classList.remove('hidden'); } }
+function openForm({ title, fields, values = {}, submit = 'حفظ', onSubmit }) {
+  const f = fields.map(fl => {
+    const v = values[fl.k] ?? '', id = 'f_' + fl.k; let inp;
+    if (fl.type === 'select') inp = `<select id="${id}" class="fld">${fl.opts.map(([val, lb]) => `<option value="${esc(val)}" ${String(val) === String(v) ? 'selected' : ''}>${esc(lb)}</option>`).join('')}</select>`;
+    else if (fl.type === 'textarea') inp = `<textarea id="${id}" rows="${fl.rows || 3}" maxlength="${fl.max || 500}" class="fld" placeholder="${esc(fl.ph || '')}">${esc(v)}</textarea>`;
+    else if (fl.type === 'file') inp = `<input id="${id}" type="file" accept="image/*" class="fld">`;
+    else inp = `<input id="${id}" type="${fl.type || 'text'}" value="${esc(v)}" ${fl.max ? `maxlength="${fl.max}"` : ''} ${fl.min != null ? `min="${fl.min}"` : ''} ${fl.step ? `step="${fl.step}"` : ''} placeholder="${esc(fl.ph || '')}" class="fld">`;
+    return `<div><label for="${id}" class="block text-[11px] text-slate-300 mb-1">${esc(fl.label)}${fl.req ? ' <span class="text-red-400">*</span>' : ''}</label>${inp}${fl.help ? `<p class="text-[10px] text-slate-400 mt-1">${esc(fl.help)}</p>` : ''}</div>`;
+  }).join('');
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><form id="modalForm" class="glass-panel rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar p-4 space-y-3" novalidate role="dialog" aria-modal="true"><div class="flex justify-between items-center"><h3 class="font-bold text-amber-400 text-sm">${esc(title)}</h3><button type="button" data-act="closeModal" class="text-slate-400 hover:text-white" aria-label="إغلاق"><i class="fas fa-times"></i></button></div>${f}<p id="formErr" class="text-[11px] text-red-400 hidden"></p><div class="flex gap-2 justify-end pt-1"><button type="button" data-act="closeModal" class="px-4 py-2 rounded-xl bg-slate-700 text-xs">إلغاء</button><button type="submit" class="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">${esc(submit)}</button></div></form></div>`;
+  const form = $('#modalForm'); const first = form.querySelector('input,select,textarea'); if (first) first.focus();
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const vals = {};
+    for (const fl of fields) {
+      const el = $('#f_' + fl.k);
+      if (fl.type === 'file') { vals[fl.k] = el.files[0] || null; continue; }
+      let x = el.value.trim();
+      if (fl.req && !x) return formErr(`حقل "${fl.label}" مطلوب`);
+      vals[fl.k] = x;
+    }
+    try { const err = await onSubmit(vals); if (err) formErr(err); else closeModal(); }
+    catch (ex) { console.error(ex); formErr(ex.message || 'حدث خطأ'); }
+  };
+}
+let confirmRes = null;
+function confirmBox(msg) {
+  return new Promise(r => {
+    confirmRes = r;
+    $('#confirmRoot').innerHTML = `<div class="fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-3"><div class="glass-panel rounded-2xl p-5 max-w-sm w-full space-y-4" role="alertdialog"><p class="text-sm text-slate-100">${esc(msg)}</p><div class="flex gap-2 justify-end"><button data-act="confirmNo" class="px-4 py-2 rounded-xl bg-slate-700 text-xs">إلغاء</button><button data-act="confirmYes" class="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs">تأكيد</button></div></div></div>`;
+  });
+}
+function resizeImage(file, max = 720, q = .7) {
+  return new Promise((res, rej) => {
+    if (!/^image\//.test(file.type)) return rej(new Error('الملف المختار ليس صورة'));
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const s = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * s); c.height = Math.round(im.height * s);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const out = c.toDataURL('image/jpeg', q);
+      out.length > 350000 ? rej(new Error('الصورة كبيرة جدًا، اختر صورة أصغر')) : res(out);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('تعذّرت قراءة الصورة')); };
+    im.src = url;
+  });
+}
+
+/* ---------- عمليات عامة: حفظ وحذف ---------- */
+function saveItem(mod, id, obj) {
+  const node = MODS[mod].node, old = id ? DB.get(node + '/' + id) : null;
+  const rec = { ...(old || {}), ...obj };
+  if (!old) { rec.by = me.id; rec.ts = NOW(); }
+  if (DB.mode === 'cloud' && APPROVAL.has(node)) { rec.status = role() === 'admin' ? 'approved' : 'pending'; if (rec.status === 'pending') setTimeout(() => toast('أُرسل للمراجعة، وسيظهر بعد اعتماد المسؤول'), 0); }
+  clean(rec);
+  const nid = id || uid(); DB.set(node + '/' + nid, rec); return nid;
+}
+async function delItem(mod, id, label) {
+  const node = MODS[mod].node, it = byId(node, id);
+  if (!it || !can(mod, 'del', it)) return toast('لا تملك صلاحية الحذف', 'err');
+  if (!await confirmBox(`حذف "${label(it)}" نهائيًا؟`)) return;
+  DB.remove(node + '/' + id); log('حذف', mod, label(it)); toast('تم الحذف');
+}
+function guard(mod, act, it) { if (!can(mod, act, it)) { toast('لا تملك صلاحية لهذا الإجراء', 'err'); return false; } return true; }
+
+/* ---------- الشجرة والأعمار ---------- */
+function age(m) {
+  if (!m.birth) return null;
+  const b = new Date(m.birth + 'T00:00'), e = m.death ? new Date(m.death + 'T00:00') : new Date();
+  if (isNaN(b)) return null;
+  let a = e.getFullYear() - b.getFullYear(); const md = e.getMonth() - b.getMonth();
+  if (md < 0 || (md === 0 && e.getDate() < b.getDate())) a--;
+  return a >= 0 ? a : null;
+}
+function buildTree(list) {
+  const ids = new Set(list.map(m => m.id)), kids = {}, roots = [];
+  list.forEach(m => { if (m.parent && ids.has(m.parent) && m.parent !== m.id) (kids[m.parent] = kids[m.parent] || []).push(m); else roots.push(m); });
+  const so = (a, b) => (a.birth || '9999').localeCompare(b.birth || '9999') || a.name.localeCompare(b.name, 'ar');
+  roots.sort(so); Object.values(kids).forEach(a => a.sort(so));
+  return { kids, roots };
+}
+const descIds = (id, kids) => (kids[id] || []).flatMap(k => [k.id, ...descIds(k.id, kids)]);
+const descCount = (id, kids) => descIds(id, kids).length;
+function walk(m, d, kids, out) { out.push([m, d]); (kids[m.id] || []).forEach(k => walk(k, d + 1, kids, out)); }
+function depthOf(m, kids) { return 1 + Math.max(0, ...(kids[m.id] || []).map(k => depthOf(k, kids))); }
+function nextBirthday(m) {
+  const b = new Date(m.birth + 'T00:00'), t = new Date(); t.setHours(0, 0, 0, 0);
+  let n = new Date(t.getFullYear(), b.getMonth(), b.getDate()); if (n < t) n = new Date(t.getFullYear() + 1, b.getMonth(), b.getDate());
+  return Math.round((n - t) / 864e5);
+}
+
+/* ---------- الصفحات ---------- */
+const PAGES = {};
+const simpleShell = (head) => () => head() + '<div id="pc" class="space-y-3"></div>';
+
+/* === الإحصائيات === */
+const stat = (icon, tone, label, val, sub) => {
+  const T = { amber: 'border-t-amber-500 text-amber-400 bg-amber-500/20', blue: 'border-t-blue-500 text-blue-400 bg-blue-500/20', pink: 'border-t-pink-500 text-pink-400 bg-pink-500/20', emerald: 'border-t-emerald-500 text-emerald-400 bg-emerald-500/20', teal: 'border-t-teal-500 text-teal-300 bg-teal-500/20', cyan: 'border-t-cyan-500 text-cyan-400 bg-cyan-500/20', purple: 'border-t-purple-500 text-purple-400 bg-purple-500/20', indigo: 'border-t-indigo-500 text-indigo-400 bg-indigo-500/20', slate: 'border-t-slate-400 text-slate-300 bg-slate-500/20' }[tone].split(' ');
+  return `<div class="glass-card p-4 rounded-2xl border-t-4 ${T[0]}"><div class="flex items-center justify-between"><div class="w-9 h-9 ${T[2]} ${T[1]} rounded-xl flex items-center justify-center text-sm"><i class="fas ${icon}"></i></div><span class="text-[10px] ${T[2]} ${T[1]} px-2 py-0.5 rounded-lg font-bold">${esc(label)}</span></div><div class="mt-3"><div class="text-2xl sm:text-3xl font-black ${T[1]}">${esc(val)}</div><div class="text-[11px] text-slate-300 mt-0.5">${esc(sub)}</div></div></div>`;
+};
+PAGES.stats = {
+  shell: () => hd('fa-chart-pie', 'لوحة الإحصائيات التنفيذية', 'مؤشرات نمو العائلة والفروع والمواليد والنشاط') + '<div id="pc" class="space-y-4"></div>',
+  update() {
+    const L = members(), Y = new Date().getFullYear(), { kids, roots } = buildTree(L);
+    const males = L.filter(m => m.gender === 'ذكر').length, females = L.filter(m => m.gender === 'أنثى').length;
+    const births = y => L.filter(m => year(m.birth) === y).length;
+    const living = L.filter(m => !m.death), dead = L.length - living.length;
+    const ages = living.map(age).filter(a => a != null), avg = ages.length ? Math.round(ages.reduce((s, a) => s + a, 0) / ages.length) : 0;
+    const groups = [['أقل من 18', a => a < 18, 'bg-teal-500'], ['18 – 39', a => a >= 18 && a < 40, 'bg-blue-500'], ['40 – 59', a => a >= 40 && a < 60, 'bg-amber-500'], ['60 فأكثر', a => a >= 60, 'bg-purple-500']];
+    const mp = L.length ? Math.round(males / L.length * 100) : 0, fp = L.length ? 100 - mp : 0;
+    const bdays = living.filter(m => m.birth).map(m => ({ m, d: nextBirthday(m) })).filter(x => x.d <= 30).sort((a, b) => a.d - b.d).slice(0, 8);
+    const gens = roots.length ? Math.max(...roots.map(r => depthOf(r, kids))) : 0;
+    const local = DB.mode === 'local' ? `<div class="glass-card rounded-2xl p-3 text-[11px] text-amber-300 border border-amber-500/40"><i class="fas fa-info-circle ml-1"></i> البيانات محفوظة في هذا المتصفح فقط. لتفعيل المزامنة الحية بين أفراد العائلة ضع إعدادات Firebase في المتغير <code>FIREBASE_CONFIG</code> داخل الملف.</div>` : '';
+    pc().innerHTML = local + `
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      ${stat('fa-users', 'amber', 'الإجمالي', L.length, 'أفراد العائلة المسجلون')}
+      ${stat('fa-male', 'blue', 'الذكور', males, 'عدد الذكور')}
+      ${stat('fa-female', 'pink', 'الإناث', females, 'عدد الإناث')}
+      ${stat('fa-home', 'emerald', 'البيوت', roots.length, 'الأجداد / البيوت المستقلة')}
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      ${stat('fa-baby', 'teal', 'مواليد ' + Y, births(Y), 'مواليد العام الجاري')}
+      ${stat('fa-child', 'cyan', 'مواليد ' + (Y - 1), births(Y - 1), 'مواليد العام الماضي')}
+      ${stat('fa-ring', 'purple', 'المتزوجون', calcStats(L).married, 'المتزوجون والمتزوجات (الأحياء)')}
+      ${stat('fa-eye', 'indigo', 'الزيارات', fnum(DB.get('meta/visitors')), 'إجمالي زيارات المنصة')}
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      ${stat('fa-heartbeat', 'emerald', 'الأحياء', living.length, 'على قيد الحياة')}
+      ${stat('fa-dove', 'slate', 'المتوفون', dead, 'رحمهم الله')}
+      ${stat('fa-layer-group', 'amber', 'الأجيال', gens, 'أعمق مستوى في الشجرة · متوسط العمر ' + avg)}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="glass-panel p-4 rounded-2xl space-y-3"><h3 class="font-bold text-amber-400 text-xs sm:text-sm"><i class="fas fa-chart-bar ml-2"></i>التوزيع حسب الجنس</h3>
+        <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden flex border border-slate-700"><div class="bg-blue-500 h-full" style="width:${mp}%"></div><div class="bg-pink-500 h-full" style="width:${fp}%"></div></div>
+        <div class="flex justify-between text-[11px] font-bold"><span class="text-blue-400">ذكور ${mp}%</span><span class="text-pink-400">إناث ${fp}%</span></div>
+        <h3 class="font-bold text-amber-400 text-xs sm:text-sm pt-2"><i class="fas fa-chart-bar ml-2"></i>الفئات العمرية (الأحياء)</h3>
+        ${groups.map(([n, fn, c]) => { const k = ages.filter(fn).length, p = ages.length ? Math.round(k / ages.length * 100) : 0; return `<div><div class="flex justify-between text-[11px] mb-0.5"><span>${n}</span><span>${k} (${p}%)</span></div><div class="bg-slate-900 rounded-full h-2 overflow-hidden"><div class="${c} h-full" style="width:${p}%"></div></div></div>`; }).join('')}
+      </div>
+      <div class="glass-panel p-4 rounded-2xl space-y-2"><h3 class="font-bold text-amber-400 text-xs sm:text-sm"><i class="fas fa-birthday-cake ml-2"></i>أعياد ميلاد خلال 30 يومًا</h3>
+        ${bdays.length ? bdays.map(({ m, d }) => `<div class="flex justify-between bg-slate-900/60 rounded-xl px-3 py-2"><span>${esc(m.name)}</span><span class="text-amber-300">${d === 0 ? 'اليوم 🎉' : 'بعد ' + d + ' يوم'}</span></div>`).join('') : '<p class="text-slate-400">لا توجد أعياد ميلاد قريبة</p>'}
+      </div>
+    </div>
+    ${housesTable(L)}`;
+  }
+};
+
+/* === السجل المدني === */
+function memberCard(m, map) {
+  const a = age(m), dead = !!m.death, father = m.parent && map[m.parent] ? map[m.parent].name : null;
+  return `<div class="glass-card rounded-xl p-3 flex flex-col gap-1.5 ${dead ? 'opacity-80' : ''}"><div class="flex items-start justify-between gap-2"><div><span class="font-bold text-slate-100"><i class="fas ${m.gender === 'أنثى' ? 'fa-female text-pink-400' : 'fa-male text-blue-400'} ml-1"></i>${esc(m.name)}</span>${dead ? '<span class="text-[10px] text-slate-400 mr-1">(رحمه الله)</span>' : ''}</div><div class="flex shrink-0">${editDel('registry', 'editMember', 'delMember', m)}</div></div><div class="text-[11px] text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5">${father ? `<span>الأصل: ${esc(father)}</span>` : ''}${m.birth ? `<span>الميلاد: ${fdate(m.birth)}</span>` : ''}${m.death ? `<span>الوفاة: ${fdate(m.death)}</span>` : ''}${a != null ? `<span>${dead ? 'العمر عند الوفاة' : 'العمر'}: ${a}</span>` : ''}${m.marital ? `<span>${esc(m.marital)}</span>` : ''}${m.city ? `<span><i class="fas fa-map-marker-alt text-slate-500"></i> ${esc(m.city)}</span>` : ''}${m.job ? `<span>${esc(m.job)}</span>` : ''}${m.phone && role() !== 'visitor' ? `<span dir="ltr">${esc(m.phone)}</span>` : ''}</div>${m.notes ? `<p class="text-[11px] text-slate-400">${esc(m.notes)}</p>` : ''}</div>`;
+}
+PAGES.registry = {
+  shell: () => hd('fa-id-card', 'السجل المدني العائلي', 'البيوت والأجداد من الخارج، وبالنقر تظهر التفاصيل والتعديل', searchBox('registry', 'ابحث بالاسم أو المدينة أو المهنة...') + addBtn('registry', 'addMember', 'إضافة فرد')) + '<div id="pc"></div>',
+  update() {
+    const L = members(), q = ui.q.registry.trim(), map = Object.fromEntries(L.map(m => [m.id, m]));
+    if (!L.length) { pc().innerHTML = empty('السجل فارغ. أضف أول فرد، أو (للمسؤول) حمّل بيانات تجريبية من صفحة الصلاحيات.'); return; }
+    if (q) {
+      const r = L.filter(m => [m.name, m.city, m.job].some(x => (x || '').includes(q)));
+      pc().innerHTML = r.length ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-2">${r.map(m => memberCard(m, map)).join('')}</div>` : empty('لا توجد نتائج مطابقة'); return;
+    }
+    const { kids, roots } = buildTree(L);
+    pc().innerHTML = roots.map(r => {
+      const flat = [], k = 'r' + r.id; walk(r, 0, kids, flat);
+      return `<details data-k="${k}" class="glass-panel rounded-2xl mb-3" ${isOpen(k, roots.length === 1) ? 'open' : ''}><summary class="p-3 flex items-center gap-2"><i class="fas fa-chevron-left chev text-amber-400"></i><b class="text-amber-300">بيت ${esc(r.name)}</b><span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 rounded-lg">${flat.length} فرد</span></summary><div class="p-3 pt-0 space-y-2">${flat.map(([m, d]) => `<div style="margin-right:${Math.min(d, 6) * 14}px">${memberCard(m, map)}</div>`).join('')}</div></details>`;
+    }).join('');
+  }
+};
+function memberForm(m) {
+  const list = members(), { kids } = buildTree(list), ex = new Set(m ? [m.id, ...descIds(m.id, kids)] : []);
+  const opts = [['', '— جد أعلى / بيت مستقل —'], ...list.filter(x => !ex.has(x.id)).sort((a, b) => a.name.localeCompare(b.name, 'ar')).map(x => [x.id, x.name])];
+  openForm({
+    title: m ? 'تعديل بيانات فرد' : 'إضافة فرد جديد', values: m || { gender: 'ذكر', marital: 'أعزب' },
+    fields: [
+      { k: 'name', label: 'الاسم الكامل', req: 1, max: 80 },
+      { k: 'gender', label: 'الجنس', type: 'select', opts: [['ذكر', 'ذكر'], ['أنثى', 'أنثى']] },
+      { k: 'parent', label: 'الأب / الأم (الأصل في الشجرة)', type: 'select', opts },
+      { k: 'birth', label: 'تاريخ الميلاد', type: 'date' },
+      { k: 'death', label: 'تاريخ الوفاة (إن وُجد)', type: 'date' },
+      { k: 'marital', label: 'الحالة الاجتماعية', type: 'select', opts: ['أعزب', 'متزوج', 'مطلق', 'أرمل'].map(x => [x, x]) },
+      { k: 'phone', label: 'الهاتف', type: 'tel', max: 20 },
+      { k: 'city', label: 'مدينة الإقامة', max: 60 },
+      { k: 'job', label: 'المهنة', max: 60 },
+      { k: 'notes', label: 'ملاحظات', type: 'textarea', max: 300 }
+    ],
+    onSubmit: v => {
+      if (v.birth && v.birth > todayStr()) return 'تاريخ الميلاد لا يمكن أن يكون في المستقبل';
+      if (v.death && v.death > todayStr()) return 'تاريخ الوفاة لا يمكن أن يكون في المستقبل';
+      if (v.birth && v.death && v.death < v.birth) return 'تاريخ الوفاة قبل تاريخ الميلاد';
+      if (v.phone && !/^[0-9+\-\s()]{6,20}$/.test(v.phone)) return 'رقم الهاتف غير صحيح';
+      if (v.parent && ex.has(v.parent)) return 'لا يمكن اختيار هذا الأصل (حلقة في الشجرة)';
+      const par = v.parent && byId('members', v.parent);
+      if (par && par.birth && v.birth && v.birth < par.birth) return 'تاريخ ميلاد الابن قبل تاريخ ميلاد الأصل';
+      saveItem('registry', m && m.id, v); log(m ? 'تعديل' : 'إضافة', 'registry', v.name); toast('تم الحفظ');
+    }
+  });
+}
+
+/* === الشجرة والإحصائيات التفصيلية === */
+const tile = (label, val, cls = 'text-amber-300') => `<div class="bg-slate-900/60 rounded-xl px-2.5 py-2 text-center"><div class="text-base font-black ${cls}">${val}</div><div class="text-[10px] text-slate-400">${label}</div></div>`;
+function calcStats(list) {
+  const s = { total: list.length, males: 0, females: 0, living: 0, dead: 0, deadM: 0, deadF: 0, married: 0, marriedM: 0, marriedF: 0, single: 0, divorced: 0, widowed: 0, minors: 0, births: 0 };
+  const Y = new Date().getFullYear(), ages = [], cities = new Set(); let oldest = null, youngest = null;
+  list.forEach(m => {
+    const f = m.gender === 'أنثى'; f ? s.females++ : s.males++;
+    if (m.death) { s.dead++; f ? s.deadF++ : s.deadM++; }
+    else {
+      s.living++;
+      const mar = m.marital || '';
+      if (mar === 'متزوج') { s.married++; f ? s.marriedF++ : s.marriedM++; } else if (mar === 'مطلق') s.divorced++; else if (mar === 'أرمل') s.widowed++; else s.single++;
+      const a = age(m);
+      if (a != null) { ages.push(a); if (a < 18) s.minors++; if (!oldest || a > oldest.a) oldest = { n: m.name, a }; if (!youngest || a < youngest.a) youngest = { n: m.name, a }; }
+    }
+    if (year(m.birth) === Y) s.births++;
+    if (m.city) cities.add(m.city);
+  });
+  s.avg = ages.length ? Math.round(ages.reduce((x, y) => x + y, 0) / ages.length) : 0;
+  s.cities = cities.size; s.oldest = oldest; s.youngest = youngest; return s;
+}
+function statsGrid(s) {
+  const Y = new Date().getFullYear();
+  return `<div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">${[
+    tile('إجمالي الأفراد', s.total), tile('الذكور', s.males, 'text-blue-400'), tile('الإناث', s.females, 'text-pink-400'),
+    tile('الأحياء', s.living, 'text-emerald-400'), tile('المتوفون', s.dead, 'text-slate-300'), tile('متوفون ذكور / إناث', `${s.deadM} / ${s.deadF}`, 'text-slate-300'),
+    tile('متزوجون (أحياء)', s.married, 'text-purple-400'), tile('متزوجون ذكور', s.marriedM, 'text-blue-300'), tile('متزوجات إناث', s.marriedF, 'text-pink-300'),
+    tile('غير متزوجين', s.single), tile('مطلقون', s.divorced), tile('أرامل', s.widowed),
+    tile('قاصرون (أقل من 18)', s.minors, 'text-teal-300'), tile('متوسط العمر', s.avg), tile('مواليد ' + Y, s.births, 'text-teal-300'), tile('عدد المدن', s.cities)
+  ].join('')}</div>${s.oldest ? `<p class="text-[11px] text-slate-400 mt-2">الأكبر سنًا: ${esc(s.oldest.n)} (${s.oldest.a}) · الأصغر: ${esc(s.youngest.n)} (${s.youngest.a})</p>` : ''}`;
+}
+const branchList = (id, kids, map) => [map[id], ...descIds(id, kids).map(i => map[i])].filter(Boolean);
+const HCOLS = [['الأفراد', 'total'], ['ذكور', 'males'], ['إناث', 'females'], ['أحياء', 'living'], ['متوفون', 'dead'], ['متزوجون', 'married'], ['غير متزوجين', 'single'], ['مطلقون', 'divorced'], ['أرامل', 'widowed'], ['قاصرون', 'minors']];
+function housesTable(L) {
+  const { kids, roots } = buildTree(L), map = Object.fromEntries(L.map(m => [m.id, m]));
+  if (!roots.length) return '';
+  const rows = roots.map(r => ({ r, s: calcStats(branchList(r.id, kids, map)), g: depthOf(r, kids) })), T = calcStats(L);
+  return `<div class="glass-panel rounded-2xl p-3 overflow-x-auto custom-scrollbar"><h3 class="font-bold text-amber-400 text-xs sm:text-sm mb-2"><i class="fas fa-table ml-2"></i>مقارنة البيوت</h3><table class="w-full text-[11px] text-center"><thead class="text-slate-400"><tr><th class="text-right p-1.5">البيت</th>${HCOLS.map(c => `<th class="p-1.5">${c[0]}</th>`).join('')}<th class="p-1.5">الأجيال</th></tr></thead><tbody>${rows.map(({ r, s, g }) => `<tr class="border-t border-slate-800"><td class="text-right p-1.5 text-amber-300">${esc(r.name)}</td>${HCOLS.map(c => `<td class="p-1.5">${s[c[1]]}</td>`).join('')}<td class="p-1.5">${g}</td></tr>`).join('')}<tr class="border-t-2 border-amber-500/40 font-bold"><td class="text-right p-1.5">الإجمالي</td>${HCOLS.map(c => `<td class="p-1.5">${T[c[1]]}</td>`).join('')}<td class="p-1.5">${Math.max(...rows.map(x => x.g))}</td></tr></tbody></table></div>`;
+}
+function nodeHtml(m, kids, depth, q) {
+  const ch = kids[m.id] || [], n = descCount(m.id, kids), a = age(m), match = q && m.name.includes(q);
+  const line = `<span class="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 rounded-xl px-2.5 py-1"><i class="fas ${m.gender === 'أنثى' ? 'fa-female text-pink-400' : 'fa-male text-blue-400'}"></i><span class="${match ? 'bg-amber-500/40 rounded px-1' : ''} ${m.death ? 'text-slate-400' : ''}">${esc(m.name)}</span>${a != null ? `<span class="text-[10px] text-slate-400">${a}</span>` : ''}${n ? `<span class="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 rounded-lg" title="عدد الأحفاد">${n}</span>${btn('branch', m.id, 'fa-chart-pie', 'إحصائيات هذا الفرع', 'text-amber-400')}` : ''}</span>`;
+  if (!ch.length) return `<div class="py-1">${line}</div>`;
+  const k = 't' + m.id;
+  return `<details data-k="${k}" class="py-1" ${q || isOpen(k, depth < 1) ? 'open' : ''}><summary class="flex items-center gap-1"><i class="fas fa-chevron-left chev text-amber-400 text-[10px]"></i>${line}</summary><div class="tree-children">${ch.map(c => nodeHtml(c, kids, depth + 1, q)).join('')}</div></details>`;
+}
+PAGES.tree = {
+  shell: () => hd('fa-sitemap', 'شجرة العائلة والإحصائيات التفصيلية', 'لكل بيت أعداده بالتفصيل، واضغط على أيقونة الرسم بجانب أي اسم لعرض إحصائيات فرعه', searchBox('tree', 'ابحث في الشجرة...') + '<button data-act="exportHouses" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-1.5 rounded-xl"><i class="fas fa-file-csv ml-1"></i>تصدير CSV</button>') + '<div id="pc" class="space-y-3"></div>',
+  update() {
+    const L = members(), q = ui.q.tree.trim();
+    if (!L.length) { pc().innerHTML = empty('لا توجد بيانات بعد'); return; }
+    const { kids, roots } = buildTree(L), map = Object.fromEntries(L.map(m => [m.id, m]));
+    if (q) { pc().innerHTML = `<div class="glass-panel rounded-2xl p-4 overflow-x-auto custom-scrollbar">${roots.map(r => nodeHtml(r, kids, 0, q)).join('')}</div>`; return; }
+    pc().innerHTML = housesTable(L) + roots.map(r => {
+      const s = calcStats(branchList(r.id, kids, map)), k = 'h' + r.id;
+      const chip = (t, c) => `<span class="text-[10px] ${c} px-2 py-0.5 rounded-lg">${t}</span>`;
+      return `<details data-k="${k}" class="glass-panel rounded-2xl" ${isOpen(k, roots.length === 1) ? 'open' : ''}><summary class="p-3 flex flex-wrap items-center gap-2"><i class="fas fa-chevron-left chev text-amber-400"></i><b class="text-amber-300">بيت ${esc(r.name)}</b>${chip(s.total + ' فرد', 'bg-amber-500/20 text-amber-300')}${chip(s.females + ' إناث', 'bg-pink-500/20 text-pink-300')}${chip(s.married + ' متزوج', 'bg-purple-500/20 text-purple-300')}${chip(s.dead + ' متوفى', 'bg-slate-500/20 text-slate-300')}</summary><div class="p-3 pt-0 space-y-3">${statsGrid(s)}<div class="overflow-x-auto custom-scrollbar">${nodeHtml(r, kids, 0, '')}</div></div></details>`;
+    }).join('');
+  }
+};
+function branchModal(id) {
+  const L = members(), { kids } = buildTree(L), map = Object.fromEntries(L.map(m => [m.id, m])), m = map[id]; if (!m) return;
+  const s = calcStats(branchList(id, kids, map)), ch = kids[id] || [];
+  const rows = ch.map(c => { const x = calcStats(branchList(c.id, kids, map)); return `<tr class="border-t border-slate-800"><td class="text-right p-1.5">${esc(c.name)}</td><td>${x.total}</td><td>${x.males}</td><td>${x.females}</td><td>${x.married}</td><td>${x.dead}</td></tr>`; }).join('');
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><div class="glass-panel rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto custom-scrollbar p-4 space-y-3" role="dialog" aria-modal="true"><div class="flex justify-between"><h3 class="font-bold text-amber-400 text-sm">إحصائيات فرع: ${esc(m.name)}</h3><button data-act="closeModal" aria-label="إغلاق" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button></div>${statsGrid(s)}${ch.length ? `<h4 class="text-[11px] text-slate-300 pt-1">الأبناء المباشرون وفروعهم</h4><div class="overflow-x-auto"><table class="w-full text-[11px] text-center"><thead class="text-slate-400"><tr><th class="text-right p-1.5">الاسم</th><th>إجمالي الفرع</th><th>ذكور</th><th>إناث</th><th>متزوجون</th><th>متوفون</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}</div></div>`;
+}
+function exportHouses() {
+  const L = members(), { kids, roots } = buildTree(L), map = Object.fromEntries(L.map(m => [m.id, m]));
+  const head = ['البيت', 'الأفراد', 'ذكور', 'إناث', 'أحياء', 'متوفون', 'متزوجون', 'غير متزوجين', 'مطلقون', 'أرامل', 'قاصرون', 'متوسط العمر', 'الأجيال'];
+  const rows = roots.map(r => { const s = calcStats(branchList(r.id, kids, map)); return [r.name, s.total, s.males, s.females, s.living, s.dead, s.married, s.single, s.divorced, s.widowed, s.minors, s.avg, depthOf(r, kids)]; });
+  dl('houses-' + todayStr() + '.csv', csv([head, ...rows]));
+}
+function csv(rows) { return rows.map(r => r.map(c => { let s = String(c ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; }).join(',')).join('\r\n'); }
+function dl(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+
+/* === الدليل === */
+PAGES.directory = {
+  shell: () => hd('fa-address-book', 'دليل العائلة', 'وسائل التواصل مع الأفراد (أرقام الهواتف تظهر للأعضاء المسجلين فقط)', searchBox('directory', 'ابحث بالاسم أو المدينة أو المهنة...')) + '<div id="pc" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>',
+  update() {
+    const q = ui.q.directory.trim(), vis = role() === 'visitor';
+    const L = members().filter(m => !m.death && (!q || [m.name, m.city, m.job].some(x => (x || '').includes(q)))).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+    pc().innerHTML = L.length ? L.map(m => {
+      const d = (m.phone || '').replace(/\D/g, '');
+      return `<div class="glass-card rounded-2xl p-3 space-y-1"><div class="font-bold text-slate-100"><i class="fas ${m.gender === 'أنثى' ? 'fa-female text-pink-400' : 'fa-male text-blue-400'} ml-1"></i>${esc(m.name)}</div><div class="text-[11px] text-slate-300">${m.city ? `<i class="fas fa-map-marker-alt text-slate-500 ml-1"></i>${esc(m.city)} ` : ''}${m.job ? `· ${esc(m.job)}` : ''}</div>${m.phone ? (vis ? '<div class="text-[11px] text-slate-500"><i class="fas fa-lock ml-1"></i>الهاتف للأعضاء فقط</div>' : `<div class="flex items-center gap-2 pt-1" dir="ltr"><span class="text-[11px] text-slate-300">${esc(m.phone)}</span><a href="tel:${esc(m.phone.replace(/[^0-9+]/g, ''))}" class="text-emerald-400" aria-label="اتصال"><i class="fas fa-phone"></i></a>${d ? `<a href="https://wa.me/${d}" target="_blank" rel="noopener noreferrer" class="text-green-400" aria-label="واتساب"><i class="fab fa-whatsapp"></i></a>` : ''}</div>`) : ''}</div>`;
+    }).join('') : '<div class="col-span-full">' + empty('لا توجد نتائج') + '</div>';
+  }
+};
+
+/* === التبرعات والتحصيل بحسب الفئة === */
+const GROUPS = [['all', 'جميع الأحياء'], ['males', 'الذكور'], ['females', 'الإناث'], ['adults', 'البالغون (18 فأكثر)'], ['adultM', 'الذكور البالغون'], ['adultF', 'الإناث البالغات'], ['married', 'المتزوجون والمتزوجات'], ['marriedM', 'المتزوجون (ذكور)'], ['marriedF', 'المتزوجات (إناث)'], ['single', 'غير المتزوجين'], ['custom', 'تحديد يدوي للأسماء']];
+function groupOptions() {
+  const { roots } = buildTree(members());
+  return [['none', 'بدون قائمة — مساهمات حرة فقط'], ...GROUPS.slice(0, -1), ...roots.map(r => ['house:' + r.id, 'بيت ' + r.name]), GROUPS[GROUPS.length - 1]];
+}
+function groupLabel(g) {
+  if (!g || g === 'none') return 'مساهمات حرة';
+  if (g.startsWith('house:')) { const m = byId('members', g.slice(6)); return 'بيت ' + (m ? m.name : '(محذوف)'); }
+  return (GROUPS.find(x => x[0] === g) || ['', '—'])[1];
+}
+function fundCtx() {
+  const L = members(), { kids } = buildTree(L), map = Object.fromEntries(L.map(m => [m.id, m])), hc = {};
+  return { L, map, house: id => hc[id] || (hc[id] = new Set([id, ...descIds(id, kids)])) };
+}
+function inGroup(m, f, ctx) {
+  if (m.death) return false;
+  const g = f.group || 'none', a = age(m), ad = a == null || a >= 18, fem = m.gender === 'أنثى', mar = m.marital === 'متزوج';
+  switch (g) {
+    case 'all': return true; case 'males': return !fem; case 'females': return fem;
+    case 'adults': return ad; case 'adultM': return ad && !fem; case 'adultF': return ad && fem;
+    case 'married': return mar; case 'marriedM': return mar && !fem; case 'marriedF': return mar && fem;
+    case 'single': return !mar; case 'custom': return !!(f.custom && f.custom[m.id]);
+    default: return g.startsWith('house:') ? ctx.house(g.slice(6)).has(m.id) : false;
+  }
+}
+function fundRoster(f, ctx) {
+  const pays = f.pays || {}, set = new Map();
+  ctx.L.forEach(m => { if (inGroup(m, f, ctx)) set.set(m.id, false); });
+  Object.keys(pays).forEach(id => { if (!set.has(id) && ctx.map[id]) set.set(id, true); });
+  const need = +f.perHead || 0;
+  return [...set].map(([id, out]) => {
+    const m = ctx.map[id], p = pays[id], amt = p ? +p.amount || 0 : 0;
+    return { m, p, amt, out, st: amt > 0 ? (need && amt < need ? 'partial' : 'paid') : 'unpaid' };
+  }).sort((a, b) => a.m.name.localeCompare(b.m.name, 'ar'));
+}
+const STATUS_ICON = {
+  paid: '<i class="fas fa-check-circle text-emerald-400" title="دفع"></i>',
+  partial: '<i class="fas fa-adjust text-amber-400" title="دفع جزئيًا"></i>',
+  unpaid: '<i class="fas fa-times-circle text-red-400" title="لم يدفع"></i>'
+};
+function fundCard(f, ctx) {
+  const hasRoster = f.group && f.group !== 'none', manage = can('fund', 'edit', f), cur = esc(f.cur || '');
+  const free = Object.entries(f.contribs || {}).map(([id, c]) => ({ id, ...c })).filter(c => c.status !== 'pending').sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const freeSum = free.reduce((s, c) => s + (+c.amount || 0), 0);
+  let R = [], inN = 0, paidN = 0, partN = 0, unN = 0, coll = 0;
+  if (hasRoster) {
+    R = fundRoster(f, ctx); const inR = R.filter(r => !r.out);
+    inN = inR.length; paidN = inR.filter(r => r.st === 'paid').length; partN = inR.filter(r => r.st === 'partial').length; unN = inR.filter(r => r.st === 'unpaid').length;
+    coll = R.reduce((s, r) => s + r.amt, 0);
+  }
+  const grand = coll + freeSum, need = (+f.perHead || 0) * inN, goal = +f.goal || need, pct = goal > 0 ? Math.min(100, Math.round(grand / goal * 100)) : null;
+  const flt = ui.ff[f.id] || 'all', overdue = f.due && f.due < todayStr();
+  const rows = R.filter(r => flt === 'all' || (flt === 'paid' && r.st !== 'unpaid') || (flt === 'partial' && r.st === 'partial') || (flt === 'unpaid' && r.st === 'unpaid'));
+  const chipBtn = (k, label) => `<button data-act="fundFilter" data-id="${esc(f.id)}" data-f="${k}" class="px-3 py-1 rounded-xl text-[11px] ${flt === k ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-700 text-slate-200'}">${label}</button>`;
+  const kk = 'f' + f.id, k2 = 'fr' + f.id;
+  return `<div class="glass-card rounded-2xl p-4 space-y-3">
+    <div class="flex justify-between items-start gap-2"><div><h3 class="font-bold text-amber-300 text-sm">${esc(f.name)}</h3>${f.desc ? `<p class="text-[11px] text-slate-300">${esc(f.desc)}</p>` : ''}<div class="flex flex-wrap gap-1.5 mt-1"><span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg"><i class="fas fa-users ml-1"></i>${esc(groupLabel(f.group))}</span>${+f.perHead > 0 ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-lg">المطلوب من كل فرد: ${fnum(f.perHead)} ${cur}</span>` : ''}${f.due ? `<span class="text-[10px] ${overdue ? 'bg-red-500/20 text-red-300' : 'bg-slate-500/20 text-slate-300'} px-2 py-0.5 rounded-lg"><i class="fas fa-calendar ml-1"></i>الاستحقاق ${fdate(f.due)}</span>` : ''}</div></div><div class="flex shrink-0 flex-wrap justify-end">${hasRoster ? btn('exportFund', f.id, 'fa-file-csv', 'تصدير القائمة CSV') : ''}${manage && f.group === 'custom' ? btn('pickCustom', f.id, 'fa-user-check', 'تحديد الأسماء', 'text-emerald-400') : ''}${editDel('fund', 'editFund', 'delFund', f)}</div></div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">${[
+      hasRoster ? tile('أفراد الفئة', inN) : '', hasRoster ? tile('دفعوا كاملًا', paidN, 'text-emerald-400') : '', hasRoster && +f.perHead > 0 ? tile('دفعوا جزئيًا', partN, 'text-amber-400') : '', hasRoster ? tile('لم يدفعوا', unN, 'text-red-400') : '',
+      tile('إجمالي المحصّل', fnum(grand) + (f.cur ? ' ' + cur : ''), 'text-emerald-400'), need ? tile('المتبقي', fnum(Math.max(0, need - coll)) + (f.cur ? ' ' + cur : ''), 'text-red-300') : ''
+    ].join('')}</div>
+    ${pct != null ? `<div><div class="bg-slate-900 rounded-full h-2.5 overflow-hidden"><div class="bg-gradient-to-l from-emerald-400 to-amber-500 h-full" style="width:${pct}%"></div></div><div class="text-[10px] text-slate-400 mt-0.5">${pct}% من ${fnum(goal)} ${cur}</div></div>` : ''}
+    ${hasRoster ? `<details data-k="${k2}" ${isOpen(k2, true) ? 'open' : ''}><summary class="text-[12px] text-amber-300 font-bold"><i class="fas fa-chevron-left chev ml-1"></i>قائمة الأسماء (${inN})</summary>
+      <div class="flex flex-wrap gap-1.5 my-2 no-print">${chipBtn('all', `الكل (${R.length})`)}${chipBtn('paid', `دفعوا (${paidN + partN})`)}${chipBtn('unpaid', `لم يدفعوا (${unN})`)}${+f.perHead > 0 ? chipBtn('partial', `جزئي (${partN})`) : ''}</div>
+      <div class="space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">${rows.map(r => `<div class="flex items-center justify-between gap-2 bg-slate-900/60 rounded-lg px-2.5 py-1.5"><span class="flex items-center gap-2 min-w-0">${STATUS_ICON[r.st]}<span class="truncate">${esc(r.m.name)}</span>${r.out ? '<span class="text-[10px] text-slate-500">(خارج الفئة)</span>' : ''}${r.st === 'unpaid' && overdue ? '<span class="text-[10px] text-red-300">متأخر</span>' : ''}</span><span class="flex items-center gap-1 shrink-0">${r.amt ? `<b class="text-emerald-400">${fnum(r.amt)}</b><span class="text-[10px] text-slate-500">${fdate(r.p.date)}</span>` : ''}${manage ? (r.st === 'unpaid' && +f.perHead > 0 ? btn('quickPay', f.id, 'fa-check', 'تسجيل دفع كامل', 'text-emerald-400', `data-id2="${esc(r.m.id)}"`) : '') + btn('payFund', f.id, 'fa-pen', 'تسجيل / تعديل الدفع', 'text-amber-400', `data-id2="${esc(r.m.id)}"`) + (r.amt ? btn('unpay', f.id, 'fa-undo', 'إلغاء الدفع', 'text-red-400', `data-id2="${esc(r.m.id)}"`) : '') : ''}</span></div>`).join('') || '<p class="text-slate-500 text-center py-3">لا توجد أسماء في هذا العرض</p>'}</div></details>` : ''}
+    <details data-k="${kk}" ${isOpen(kk, !hasRoster) ? 'open' : ''}><summary class="text-[11px] text-slate-300"><i class="fas fa-chevron-left chev ml-1"></i>مساهمات حرة (${free.length}) — ${fnum(freeSum)} ${cur}</summary><div class="mt-2 space-y-1">${free.map(c => `<div class="flex justify-between items-center bg-slate-900/60 rounded-lg px-2.5 py-1.5"><span>${esc(c.who)}${c.note ? ` <span class="text-slate-400">— ${esc(c.note)}</span>` : ''}<span class="text-[10px] text-slate-500 mr-2">${fdate(c.date)}</span></span><span class="flex items-center"><b class="text-emerald-400">${fnum(c.amount)}</b>${can('fund', 'del', f) ? btn('delContrib', c.id, 'fa-times', 'حذف المساهمة', 'text-red-400', `data-id2="${esc(f.id)}"`) : ''}</span></div>`).join('') || '<p class="text-slate-500">لا مساهمات حرة</p>'}</div>
+    ${can('fund', 'add') ? `<button data-act="addContrib" data-id="${esc(f.id)}" class="mt-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-[11px] font-bold px-3 py-1.5 rounded-xl no-print"><i class="fas fa-plus ml-1"></i>تسجيل مساهمة حرة</button>` : ''}</details></div>`;
+}
+PAGES.fund = {
+  shell: simpleShell(() => hd('fa-hand-holding-usd', 'التبرعات والجمعيات', 'اختر الفئة المستهدفة وتابع بالأسماء من دفع ومن لم يدفع', addBtn('fund', 'addFund', 'صندوق / حملة جديدة'))),
+  update() {
+    const ctx = fundCtx(), funds = col('funds').sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    pc().innerHTML = funds.length ? funds.map(f => fundCard(f, ctx)).join('') : empty('لا توجد صناديق بعد');
+  }
+};
+function fundForm(f) {
+  openForm({
+    title: f ? 'تعديل صندوق' : 'صندوق / حملة جديدة', values: f || { group: 'all' },
+    fields: [
+      { k: 'name', label: 'اسم الصندوق / الحملة', req: 1, max: 80 },
+      { k: 'desc', label: 'الوصف', type: 'textarea', max: 300 },
+      { k: 'group', label: 'الفئة المطلوب منها التبرع', type: 'select', opts: groupOptions(), help: 'تظهر أسماء الفئة تلقائيًا ويُستثنى المتوفون، ومن يُضاف لاحقًا للسجل ينضم تلقائيًا' },
+      { k: 'perHead', label: 'المبلغ المطلوب من كل فرد (اختياري)', type: 'number', min: 0, step: 'any' },
+      { k: 'goal', label: 'المبلغ المستهدف الكلي (اختياري)', type: 'number', min: 0, step: 'any' },
+      { k: 'cur', label: 'العملة (مثال: جنيه، ريال، $)', max: 12 },
+      { k: 'due', label: 'موعد الاستحقاق (اختياري)', type: 'date' }
+    ],
+    onSubmit: v => {
+      if (v.perHead !== '' && !(+v.perHead >= 0)) return 'المبلغ المطلوب من كل فرد غير صحيح';
+      if (v.goal !== '' && !(+v.goal >= 0)) return 'المبلغ المستهدف غير صحيح';
+      v.perHead = v.perHead === '' ? '' : +v.perHead; v.goal = v.goal === '' ? '' : +v.goal;
+      const nid = saveItem('fund', f && f.id, v); log(f ? 'تعديل' : 'إضافة', 'fund', v.name); toast('تم الحفظ');
+      if (v.group === 'custom' && !(f && f.custom)) setTimeout(() => pickerModal(nid), 0);
+    }
+  });
+}
+function contribForm(fid) {
+  openForm({
+    title: 'تسجيل مساهمة حرة', values: { who: uname(me.id), date: todayStr() },
+    fields: [{ k: 'who', label: 'اسم المساهم', req: 1, max: 80 }, { k: 'amount', label: 'المبلغ', req: 1, type: 'number', min: 0, step: 'any' }, { k: 'date', label: 'التاريخ', type: 'date' }, { k: 'note', label: 'ملاحظة', max: 120 }],
+    onSubmit: v => { if (!(+v.amount > 0)) return 'أدخل مبلغًا أكبر من صفر'; DB.set(`funds/${fid}/contribs/${uid()}`, clean({ ...v, amount: +v.amount, by: me.id, ...(needsReview() ? { status: 'pending' } : {}) })); if (needsReview()) setTimeout(() => toast('أُرسلت المساهمة للمراجعة، وستُحتسب بعد اعتماد المسؤول'), 0); log('مساهمة', 'fund', `${v.who}: ${v.amount}`); toast('تم تسجيل المساهمة'); }
+  });
+}
+function payForm(f, mid) {
+  const m = byId('members', mid), cur = (f.pays || {})[mid]; if (!m) return;
+  openForm({
+    title: 'تسجيل دفع: ' + m.name, values: cur || { amount: f.perHead || '', date: todayStr() },
+    fields: [{ k: 'amount', label: 'المبلغ المدفوع', req: 1, type: 'number', min: 0, step: 'any' }, { k: 'date', label: 'تاريخ الدفع', type: 'date' }, { k: 'note', label: 'ملاحظة', max: 120 }],
+    onSubmit: v => { if (!(+v.amount > 0)) return 'أدخل مبلغًا أكبر من صفر'; DB.set(`funds/${f.id}/pays/${mid}`, clean({ amount: +v.amount, date: v.date, note: v.note, by: me.id })); log('تسجيل دفع', 'fund', `${m.name} — ${f.name}: ${v.amount}`); toast('تم تسجيل الدفع'); }
+  });
+}
+function pickerModal(fid) {
+  const f = byId('funds', fid); if (!f) return;
+  const L = members().filter(m => !m.death).sort((a, b) => a.name.localeCompare(b.name, 'ar')), sel = f.custom || {};
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><div class="glass-panel rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col p-4 gap-3" role="dialog" aria-modal="true"><div class="flex justify-between"><h3 class="font-bold text-amber-400 text-sm">تحديد الأسماء: ${esc(f.name)}</h3><button data-act="closeModal" aria-label="إغلاق" class="text-slate-400"><i class="fas fa-times"></i></button></div><input type="search" data-inp="pick" placeholder="بحث..." class="fld" aria-label="بحث"><div class="flex items-center gap-2 text-[11px]"><button data-act="pickAll" class="bg-slate-700 px-2.5 py-1 rounded-lg">تحديد الظاهر</button><button data-act="pickNone" class="bg-slate-700 px-2.5 py-1 rounded-lg">إلغاء الكل</button><span id="pickCount" class="text-amber-300 mr-auto"></span></div><div id="pickList" class="overflow-y-auto flex-1 space-y-1 custom-scrollbar">${L.length ? L.map(m => `<label class="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2.5 py-1.5" data-name="${esc(m.name)}"><input type="checkbox" data-chg="pick" value="${esc(m.id)}" ${sel[m.id] ? 'checked' : ''}> ${esc(m.name)}</label>`).join('') : '<p class="text-slate-500 text-center">لا توجد أسماء في السجل</p>'}</div><div class="flex gap-2 justify-end"><button data-act="closeModal" class="px-4 py-2 rounded-xl bg-slate-700 text-xs">إلغاء</button><button data-act="savePick" data-id="${esc(fid)}" class="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">حفظ</button></div></div></div>`;
+  updatePickCount();
+}
+function updatePickCount() { const c = $('#pickCount'); if (c) c.textContent = 'المحدد: ' + document.querySelectorAll('#pickList input:checked').length; }
+function exportFund(f) {
+  const R = fundRoster(f, fundCtx()), L = { paid: 'دفع', partial: 'جزئي', unpaid: 'لم يدفع' };
+  dl('fund-' + todayStr() + '.csv', csv([['الاسم', 'الحالة', 'المبلغ', 'التاريخ', 'ملاحظة'], ...R.map(r => [r.m.name, L[r.st], r.amt || '', r.p ? r.p.date || '' : '', r.p ? r.p.note || '' : ''])]));
+}
+
+/* === المناسبات === */
+PAGES.events = {
+  shell: simpleShell(() => hd('fa-calendar-alt', 'المناسبات والفرق', 'الأفراح والاجتماعات واللقاءات وفرق التنظيم، مع تأكيد الحضور', addBtn('events', 'addEvent', 'مناسبة جديدة'))),
+  update() {
+    const t = todayStr(), E = col('events'), up = E.filter(e => e.date >= t).sort((a, b) => a.date.localeCompare(b.date)), past = E.filter(e => e.date < t).sort((a, b) => b.date.localeCompare(a.date));
+    const card = (e, old) => {
+      const n = Object.keys(e.rsvp || {}).length, mine = me && e.rsvp && e.rsvp[me.id], d = daysTo(e.date), team = (e.team || '').split('\n').map(x => x.trim()).filter(Boolean);
+      return `<div class="glass-card rounded-2xl p-4 space-y-2 ${old ? 'opacity-70' : ''}"><div class="flex justify-between items-start gap-2"><div><h3 class="font-bold text-purple-300 text-sm">${esc(e.title)}</h3><div class="text-[11px] text-slate-300"><i class="fas fa-calendar ml-1"></i>${fdate(e.date)} ${old ? '' : `<span class="text-amber-300">(${d === 0 ? 'اليوم' : 'بعد ' + d + ' يوم'})</span>`}${e.place ? ` · <i class="fas fa-map-marker-alt ml-1"></i>${esc(e.place)}` : ''}</div></div><div class="flex shrink-0">${editDel('events', 'editEvent', 'delEvent', e)}</div></div>${e.desc ? `<p class="text-[11px] text-slate-300">${esc(e.desc)}</p>` : ''}${team.length ? `<div class="flex flex-wrap gap-1">${team.map(x => `<span class="text-[10px] bg-purple-500/20 text-purple-200 px-2 py-0.5 rounded-lg">${esc(x)}</span>`).join('')}</div>` : ''}<div class="flex items-center gap-2"><span class="text-[11px] text-slate-400"><i class="fas fa-user-check ml-1"></i>${n} مؤكد للحضور</span>${role() !== 'visitor' && !old ? `<button data-act="rsvp" data-id="${esc(e.id)}" class="text-[11px] px-3 py-1 rounded-xl no-print ${mine ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-200'}">${mine ? '✓ سأحضر' : 'تأكيد الحضور'}</button>` : ''}</div></div>`;
+    };
+    pc().innerHTML = (up.length ? up.map(e => card(e, false)).join('') : empty('لا توجد مناسبات قادمة')) + (past.length ? `<h3 class="text-slate-400 text-[11px] pt-2">مناسبات سابقة</h3>` + past.map(e => card(e, true)).join('') : '');
+  }
+};
+function eventForm(e) {
+  openForm({
+    title: e ? 'تعديل مناسبة' : 'مناسبة جديدة', values: e || {},
+    fields: [{ k: 'title', label: 'عنوان المناسبة', req: 1, max: 100 }, { k: 'date', label: 'التاريخ', req: 1, type: 'date' }, { k: 'place', label: 'المكان', max: 100 }, { k: 'desc', label: 'التفاصيل', type: 'textarea', max: 400 }, { k: 'team', label: 'فريق التنظيم', type: 'textarea', max: 400, help: 'اسم في كل سطر' }],
+    onSubmit: v => { if (isNaN(new Date(v.date))) return 'التاريخ غير صحيح'; saveItem('events', e && e.id, v); log(e ? 'تعديل' : 'إضافة', 'events', v.title); toast('تم الحفظ'); }
+  });
+}
+
+/* === الاجتماعات والتصويت والانتخابات === */
+const PAL = ['#f59e0b', '#3b82f6', '#10b981', '#ec4899', '#8b5cf6', '#14b8a6', '#ef4444', '#84cc16', '#06b6d4', '#f97316', '#a855f7', '#64748b'];
+const eligibleUsers = b => Object.entries(DB.get('users') || {}).filter(([, u]) => hasCred(u) && (!b || b.eligible !== 'admins' || u.role === 'admin')).map(([id, u]) => ({ id, ...u }));
+const bClosed = b => !!b.closed || !!(b.end && new Date(b.end) < new Date());
+const optOf = s => { const [n, ...d] = String(s).split('|'); return { n: n.trim(), d: d.join('|').trim() }; };
+function tally(b) {
+  const c = Array((b.opts || []).length).fill(0); let ab = 0, voters = 0;
+  Object.values(b.votes || {}).forEach(v => { v = String(v); voters++; if (v === 'a') { ab++; return; } v.split(',').forEach(i => { if (c[+i] !== undefined) c[+i]++; }); });
+  return { c, ab, voters, valid: voters - ab };
+}
+const myVote = b => { const v = me && b.votes ? b.votes[me.id] : undefined; return v === undefined ? null : String(v); };
+const canVote = b => {
+  if (!me || role() === 'visitor' || bClosed(b)) return false;
+  if (b.eligible === 'admins' && role() !== 'admin') return false;
+  return !(myVote(b) !== null && !b.changeable);
+};
+const showRes = b => b.live !== 'after' || bClosed(b) || can('ballots', 'edit', b);
+function timeLeft(b) {
+  if (!b.end) return 'مفتوح';
+  const ms = new Date(b.end) - new Date(); if (ms <= 0) return 'انتهى';
+  const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60);
+  return d ? `${d} يوم ${h} س` : h ? `${h} س ${m % 60} د` : `${m % 60} د`;
+}
+function donut(c, total) {
+  if (!total) return '<div class="w-36 h-36 rounded-full mx-auto border-8 border-slate-800 flex items-center justify-center text-[11px] text-slate-500">لا أصوات</div>';
+  let acc = 0;
+  const seg = c.map((x, i) => { const a = acc / total * 100; acc += x; return `${PAL[i % PAL.length]} ${a}% ${acc / total * 100}%`; }).join(',');
+  return `<div class="relative w-36 h-36 rounded-full mx-auto" style="background:conic-gradient(${seg})" role="img" aria-label="رسم دائري للنتائج"><div class="absolute inset-4 rounded-full bg-slate-900 flex flex-col items-center justify-center"><b class="text-xl">${total}</b><span class="text-[10px] text-slate-400">صوت</span></div></div>`;
+}
+const pendingVotes = () => (me && role() !== 'visitor') ? col('ballots').filter(b => canVote(b) && myVote(b) === null).length : 0;
+const bTile = (l, v, cls = 'text-amber-300') => `<div class="bg-slate-900/60 rounded-xl p-2.5 text-center"><div class="text-lg font-black ${cls}">${v}</div><div class="text-[10px] text-slate-400">${l}</div></div>`;
+
+function ballotCard(b) {
+  const closed = bClosed(b), t = tally(b), opts = (b.opts || []).map(optOf), elig = eligibleUsers(b), visible = showRes(b);
+  const mv = myVote(b), manage = can('ballots', 'edit', b), multi = Math.max(1, +b.multi || 1), isMulti = multi > 1, voting = canVote(b);
+  const turn = elig.length ? Math.min(100, Math.round(t.voters / elig.length * 100)) : 0;
+  const maxC = Math.max(0, ...t.c), winners = closed && maxC > 0 ? t.c.map((x, i) => x === maxC ? i : -1).filter(i => i >= 0) : [];
+  const order = opts.map((_, i) => i); if (visible && closed) order.sort((a, c) => t.c[c] - t.c[a]);
+  const totalSel = t.c.reduce((s, x) => s + x, 0);
+  const selSet = isMulti && voting ? (ui.sel[b.id] || new Set((mv && mv !== 'a' ? mv.split(',') : []).filter(Boolean))) : null;
+  const mine = mv && mv !== 'a' ? mv.split(',') : [];
+
+  const rows = order.map((i, rank) => {
+    const o = opts[i], c = t.c[i], pct = t.valid ? Math.round(c / t.valid * 100) : 0, isMine = mine.includes(String(i)), sel = selSet ? selSet.has(String(i)) : false, win = winners.includes(i), col = PAL[i % PAL.length];
+    const voters = !b.secret && visible && role() !== 'visitor' ? Object.entries(b.votes || {}).filter(([, v]) => String(v) !== 'a' && String(v).split(',').includes(String(i))).map(([u]) => uname(u)) : [];
+    const label = isMulti ? (sel ? '✓ مُختار' : 'اختر') : (isMine ? '✓ صوتك' : 'صوّت');
+    const on = isMulti ? sel : isMine;
+    return `<div class="rounded-xl border ${win ? 'border-amber-400 bg-amber-500/10' : on || isMine ? 'border-emerald-400/70 bg-slate-900/60' : 'border-slate-700 bg-slate-900/60'} p-3 space-y-2">
+      <div class="flex items-center gap-3"><span class="w-7 h-7 rounded-full text-[12px] font-black flex items-center justify-center text-slate-950 shrink-0" style="background:${col}">${visible && closed ? rank + 1 : i + 1}</span>
+      <div class="flex-grow min-w-0"><div class="font-bold text-slate-100 flex items-center gap-2 flex-wrap">${esc(o.n)}${win ? `<span class="text-[10px] bg-amber-500 text-slate-950 px-2 py-0.5 rounded-lg"><i class="fas fa-crown ml-1"></i>${winners.length > 1 ? 'تعادل' : 'الفائز'}</span>` : ''}${isMine ? '<span class="text-[10px] text-emerald-300"><i class="fas fa-check-circle"></i> صوتك</span>' : ''}</div>${o.d ? `<div class="text-[11px] text-slate-400">${esc(o.d)}</div>` : ''}</div>
+      ${visible ? `<div class="text-center shrink-0"><div class="text-xl font-black" style="color:${col}">${c}</div><div class="text-[10px] text-slate-400">${pct}%</div></div>` : ''}
+      ${voting ? `<button data-act="castVote" data-id="${esc(b.id)}" data-i="${i}" class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold no-print ${on ? 'bg-emerald-600 text-white' : isMulti ? 'bg-slate-700 text-slate-100' : 'bg-amber-500 text-slate-950 hover:bg-amber-400'}">${label}</button>` : ''}</div>
+      ${visible ? `<div class="h-2.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${pct}%;background:${col}"></div></div>` : ''}
+      ${voters.length ? `<div class="text-[10px] text-slate-400"><i class="fas fa-users ml-1"></i>${voters.map(esc).join('، ')}</div>` : ''}</div>`;
+  }).join('');
+
+  const abRow = b.abstain ? `<div class="rounded-xl border ${mv === 'a' ? 'border-emerald-400/70' : 'border-slate-700'} bg-slate-900/60 p-3 flex items-center gap-3"><span class="w-7 h-7 rounded-full bg-slate-600 text-[12px] flex items-center justify-center shrink-0"><i class="fas fa-minus"></i></span><div class="flex-grow font-bold text-slate-300">امتناع عن التصويت ${mv === 'a' ? '<span class="text-[10px] text-emerald-300 mr-1"><i class="fas fa-check-circle"></i> صوتك</span>' : ''}</div>${visible ? `<b class="text-slate-300">${t.ab}</b>` : ''}${voting ? `<button data-act="castVote" data-id="${esc(b.id)}" data-i="a" class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold bg-slate-600 hover:bg-slate-500 no-print">${mv === 'a' ? '✓ امتنعت' : 'امتناع'}</button>` : ''}</div>` : '';
+  const multiBar = isMulti && voting ? `<div class="flex items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 no-print"><span class="text-[11px] text-amber-200">اختر حتى ${multi} خيارات ثم أكّد (المختار: ${selSet.size})</span><button data-act="submitMulti" data-id="${esc(b.id)}" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950">تأكيد التصويت</button></div>` : '';
+  const notYet = manage ? elig.filter(u => !(b.votes && b.votes[u.id] !== undefined)) : [];
+  const mt = b.meeting ? byId('meetings', b.meeting) : null;
+
+  return `<div class="glass-panel rounded-2xl p-4 space-y-3 ${closed ? '' : 'border-emerald-500/30'}">
+    <div class="flex justify-between items-start gap-2"><div class="space-y-1"><div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] px-2 py-0.5 rounded-lg ${b.type === 'election' ? 'bg-purple-500/20 text-purple-300' : 'bg-teal-500/20 text-teal-300'}"><i class="fas ${b.type === 'election' ? 'fa-landmark' : 'fa-poll'} ml-1"></i>${b.type === 'election' ? 'انتخابات' : 'استطلاع'}</span><span class="text-[10px] px-2 py-0.5 rounded-lg ${closed ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">${closed ? 'مغلق' : 'مفتوح'}</span><span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300"><i class="fas ${b.secret ? 'fa-user-secret' : 'fa-eye'} ml-1"></i>${b.secret ? 'سري' : 'علني'}</span>${isMulti ? `<span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300">حتى ${multi} اختيارات</span>` : ''}${b.eligible === 'admins' ? '<span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300">للمسؤولين فقط</span>' : ''}${mt ? `<span class="text-[10px] px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300"><i class="fas fa-video ml-1"></i>${esc(mt.title)}</span>` : ''}</div><h3 class="font-black text-base text-amber-300">${esc(b.title)}</h3>${b.desc ? `<p class="text-[11px] text-slate-300 whitespace-pre-line">${esc(b.desc)}</p>` : ''}</div>
+    <div class="flex shrink-0 flex-wrap justify-end">${manage ? btn('toggleBallot', b.id, closed ? 'fa-lock-open' : 'fa-lock', closed ? 'إعادة فتح التصويت' : 'إغلاق التصويت', 'text-slate-300 hover:text-amber-400') : ''}${role() === 'admin' && t.voters ? btn('resetVotes', b.id, 'fa-eraser', 'تصفير الأصوات', 'text-orange-400') : ''}${editDel('ballots', 'editBallot', 'delBallot', b)}</div></div>
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">${bTile('المصوّتون', t.voters, 'text-emerald-400')}${bTile('أصحاب حق التصويت', elig.length, 'text-slate-200')}${bTile('نسبة المشاركة', turn + '%', 'text-amber-300')}${bTile(b.abstain ? 'الامتناع' : 'الأصوات الصحيحة', visible ? (b.abstain ? t.ab : t.valid) : '—', 'text-slate-300')}${bTile('الوقت المتبقي', timeLeft(b), closed ? 'text-red-300' : 'text-teal-300')}</div>
+    <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-l from-emerald-400 to-amber-500" style="width:${turn}%"></div></div>
+    ${!visible ? '<div class="text-center text-[12px] text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3"><i class="fas fa-eye-slash ml-1"></i>النتائج مخفية وستظهر بعد إغلاق التصويت</div>' : ''}
+    ${mv !== null && !closed ? `<div class="text-[11px] text-emerald-300"><i class="fas fa-check-circle ml-1"></i>تم تسجيل صوتك${b.changeable ? ' — يمكنك تغييره قبل الإغلاق' : ''}</div>` : ''}
+    ${!me || role() === 'visitor' ? '<div class="text-[11px] text-slate-400"><i class="fas fa-lock ml-1"></i>التصويت للأعضاء المسجلين فقط</div>' : (!voting && !closed && mv === null ? '<div class="text-[11px] text-slate-400">ليس لديك حق التصويت في هذا الاقتراع</div>' : '')}
+    <div class="grid grid-cols-1 ${visible ? 'lg:grid-cols-3' : ''} gap-3"><div class="${visible ? 'lg:col-span-2' : ''} space-y-2">${rows}${abRow}${multiBar}</div>
+      ${visible ? `<div class="space-y-2"><h4 class="text-center text-[11px] text-slate-400">توزيع الأصوات</h4>${donut(t.c, totalSel)}<div class="space-y-1 pt-1">${opts.map((o, i) => `<div class="flex items-center gap-2 text-[11px]"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${PAL[i % PAL.length]}"></span><span class="truncate flex-grow">${esc(o.n)}</span><b>${t.c[i]}</b></div>`).join('')}</div></div>` : ''}</div>
+    ${manage && notYet.length ? `<details data-k="ny${esc(b.id)}" ${isOpen('ny' + b.id, false) ? 'open' : ''}><summary class="text-[11px] text-slate-400"><i class="fas fa-chevron-left chev ml-1"></i>لم يصوّتوا بعد (${notYet.length})</summary><div class="flex flex-wrap gap-1 mt-2">${notYet.map(u => `<span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded-lg">${esc(u.name)}</span>`).join('')}</div></details>` : ''}
+    <div class="text-[10px] text-slate-500">أُنشئ بواسطة ${esc(uname(b.by))} · ${fdate(new Date(b.ts || Date.now()).toISOString())}${b.end ? ' · ينتهي ' + fdt(b.end) : ''}</div></div>`;
+}
+function ballotsHtml() {
+  const B = col('ballots').sort((a, b) => (b.ts || 0) - (a.ts || 0)), f = ui.bf;
+  const pending = B.filter(b => canVote(b) && myVote(b) === null).length, open = B.filter(b => !bClosed(b)).length;
+  const list = B.filter(b => f === 'all' || (f === 'open' && !bClosed(b)) || (f === 'closed' && bClosed(b)) || (f === 'mine' && canVote(b) && myVote(b) === null));
+  const chip = (k, l) => `<button data-act="ballotFilter" data-f="${k}" class="px-3 py-1 rounded-xl text-[11px] ${f === k ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-700 text-slate-200'}">${l}</button>`;
+  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${bTile('إجمالي الاقتراعات', B.length)}${bTile('المفتوحة', open, 'text-emerald-400')}${bTile('المغلقة', B.length - open, 'text-red-300')}${bTile('بانتظار صوتك', pending, 'text-amber-300')}</div>
+  <div class="flex flex-wrap gap-1.5 no-print">${chip('all', 'الكل')}${chip('open', 'المفتوحة')}${chip('closed', 'المغلقة')}${role() !== 'visitor' ? chip('mine', 'بانتظار صوتي') : ''}</div>
+  ${list.length ? list.map(ballotCard).join('') : empty('لا توجد اقتراعات في هذا العرض')}`;
+}
+function meetingsHtml() {
+  const M = col('meetings').sort((a, b) => (b.date || '').localeCompare(a.date || '')), BL = col('ballots');
+  return M.length ? M.map(m => {
+    const link = safeUrl(m.link), bl = BL.filter(b => b.meeting === m.id);
+    return `<div class="glass-card rounded-2xl p-4 space-y-2"><div class="flex justify-between items-start gap-2"><div><h3 class="font-bold text-teal-300 text-sm">${esc(m.title)}</h3><div class="text-[11px] text-slate-300"><i class="fas fa-clock ml-1"></i>${fdt(m.date)}</div></div><div class="flex shrink-0">${editDel('meetings', 'editMeeting', 'delMeeting', m)}</div></div>${m.agenda ? `<p class="text-[11px] text-slate-300 whitespace-pre-line">${esc(m.agenda)}</p>` : ''}
+    <div class="flex flex-wrap items-center gap-2">${link ? `<a href="${esc(link)}" target="_blank" rel="noopener noreferrer" class="text-[11px] bg-teal-600 text-white px-3 py-1 rounded-xl"><i class="fas fa-video ml-1"></i>رابط الانضمام</a>` : ''}${bl.map(b => `<span class="text-[10px] ${bClosed(b) ? 'bg-slate-700 text-slate-300' : 'bg-emerald-500/20 text-emerald-300'} px-2 py-1 rounded-lg"><i class="fas fa-poll ml-1"></i>${esc(b.title)}</span>`).join('')}${can('ballots', 'add') ? `<button data-act="addBallotFor" data-id="${esc(m.id)}" class="text-[11px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded-xl no-print"><i class="fas fa-plus ml-1"></i>إنشاء تصويت لهذا الاجتماع</button>` : ''}</div></div>`;
+  }).join('') : empty('لا توجد اجتماعات');
+}
+PAGES.meetings = {
+  shell: simpleShell(() => hd('fa-video', 'الاجتماعات والتصويت والانتخابات', 'جدولة الاجتماعات، وانتخابات واستطلاعات بأزرار تصويت ونتائج حية', addBtn('meetings', 'addMeeting', 'اجتماع جديد') + addBtn('ballots', 'addBallot', 'تصويت / انتخابات'))),
+  update() {
+    const nm = col('meetings').length, nb = col('ballots').length;
+    const tab = (k, l, n) => `<button data-act="mtab" data-t="${k}" class="px-4 py-2 rounded-xl text-xs font-bold ${ui.mt === k ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">${l} (${n})</button>`;
+    pc().innerHTML = `<div class="flex gap-2 no-print">${tab('ballots', 'التصويت والانتخابات', nb)}${tab('meetings', 'الاجتماعات', nm)}</div>` + (ui.mt === 'ballots' ? ballotsHtml() : meetingsHtml());
+  }
+};
+setInterval(() => { if (me && ui.page === 'meetings' && ui.mt === 'ballots' && !document.querySelector('#modalBg')) PAGES.meetings.update(); }, 60000);
+
+function meetingForm(m) {
+  openForm({
+    title: m ? 'تعديل اجتماع' : 'اجتماع جديد', values: m || {},
+    fields: [{ k: 'title', label: 'عنوان الاجتماع', req: 1, max: 100 }, { k: 'date', label: 'الموعد', req: 1, type: 'datetime-local' }, { k: 'link', label: 'رابط الاجتماع (اختياري)', type: 'url', ph: 'https://' }, { k: 'agenda', label: 'جدول الأعمال', type: 'textarea', max: 500 }],
+    onSubmit: v => { if (isNaN(new Date(v.date))) return 'الموعد غير صحيح'; if (v.link && !safeUrl(v.link)) return 'الرابط يجب أن يبدأ بـ https://'; saveItem('meetings', m && m.id, v); log(m ? 'تعديل' : 'إضافة', 'meetings', v.title); toast('تم الحفظ'); }
+  });
+}
+function ballotForm(b, meetingId) {
+  const mts = col('meetings').sort((x, y) => (y.date || '').localeCompare(x.date || '')), bool = v => v ? '1' : '0';
+  const vals = b ? { ...b, opts: (b.opts || []).join('\n'), end: b.end || '', secret: bool(b.secret), changeable: bool(b.changeable), abstain: bool(b.abstain), multi: b.multi || 1 }
+    : { type: 'poll', eligible: 'all', secret: '0', live: 'live', changeable: '1', abstain: '0', multi: 1, meeting: meetingId || '' };
+  openForm({
+    title: b ? 'تعديل التصويت' : 'تصويت / انتخابات جديدة', values: vals,
+    fields: [
+      { k: 'type', label: 'النوع', type: 'select', opts: [['poll', 'استطلاع رأي / تصويت'], ['election', 'انتخابات (مرشحون)']] },
+      { k: 'title', label: 'العنوان أو المنصب', req: 1, max: 120 },
+      { k: 'desc', label: 'الوصف', type: 'textarea', max: 400 },
+      { k: 'opts', label: 'الخيارات / المرشحون', req: 1, type: 'textarea', rows: 5, max: 1200, help: 'اسم في كل سطر (من 2 إلى 12). لإضافة نبذة اكتب: الاسم | النبذة' },
+      { k: 'multi', label: 'أقصى عدد اختيارات للناخب', type: 'number', min: 1 },
+      { k: 'eligible', label: 'من يحق له التصويت', type: 'select', opts: [['all', 'كل أعضاء المنصة المفعّلة حساباتهم'], ['admins', 'المسؤولون فقط']] },
+      { k: 'secret', label: 'سرية التصويت', type: 'select', opts: [['0', 'علني (تظهر أسماء المصوّتين)'], ['1', 'سري (لا تظهر الأسماء)']] },
+      { k: 'live', label: 'ظهور النتائج', type: 'select', opts: [['live', 'لحظيًا أثناء التصويت'], ['after', 'بعد إغلاق التصويت فقط']] },
+      { k: 'changeable', label: 'تغيير الصوت بعد التصويت', type: 'select', opts: [['1', 'مسموح'], ['0', 'غير مسموح']] },
+      { k: 'abstain', label: 'خيار الامتناع', type: 'select', opts: [['0', 'لا'], ['1', 'نعم']] },
+      { k: 'end', label: 'موعد انتهاء التصويت (اختياري)', type: 'datetime-local' },
+      { k: 'meeting', label: 'ربط باجتماع (اختياري)', type: 'select', opts: [['', '— بدون —'], ...mts.map(m => [m.id, m.title])] }
+    ],
+    onSubmit: v => {
+      const o = [...new Set(v.opts.split('\n').map(x => x.trim()).filter(Boolean))];
+      if (o.length < 2 || o.length > 12) return 'أدخل من 2 إلى 12 خيارًا مختلفًا';
+      if (o.some(x => optOf(x).n.length < 1 || x.length > 160)) return 'اسم الخيار مطلوب ولا يتجاوز 160 حرفًا';
+      const multi = Math.max(1, Math.floor(+v.multi || 1)); if (multi > 1 && multi >= o.length) return 'عدد الاختيارات يجب أن يكون أقل من عدد الخيارات';
+      if (v.end && isNaN(new Date(v.end))) return 'موعد الانتهاء غير صحيح';
+      if (v.end && !b && new Date(v.end) <= new Date()) return 'موعد الانتهاء يجب أن يكون في المستقبل';
+      if (b && b.votes && Object.keys(b.votes).length && JSON.stringify(o) !== JSON.stringify(b.opts)) return 'لا يمكن تغيير الخيارات بعد بدء التصويت';
+      saveItem('ballots', b && b.id, { type: v.type, title: v.title, desc: v.desc, opts: o, multi, eligible: v.eligible, secret: v.secret === '1', live: v.live, changeable: v.changeable === '1', abstain: v.abstain === '1', end: v.end, meeting: v.meeting });
+      log(b ? 'تعديل' : 'إنشاء', 'ballots', v.title); toast('تم الحفظ');
+    }
+  });
+}
+async function submitVote(b, value) {
+  if (!canVote(b)) return toast('لا يمكنك التصويت الآن', 'err');
+  if (!b.changeable && !await confirmBox('لن تتمكن من تغيير صوتك بعد التأكيد. هل تريد المتابعة؟')) return;
+  DB.set(`ballots/${b.id}/votes/${me.id}`, value); delete ui.sel[b.id];
+  log('تصويت', 'ballots', b.secret ? b.title : b.title + ' ← ' + (value === 'a' ? 'امتناع' : value.split(',').map(i => optOf((b.opts || [])[+i] || '').n).join('، ')));
+  toast('تم تسجيل صوتك');
+}
+
+/* === لوحة الشرف === */
+PAGES.honors = {
+  shell: simpleShell(() => hd('fa-award', 'لوحة الشرف', 'تكريم المتفوقين والمنجزين من أبناء العائلة', addBtn('honors', 'addHonor', 'إضافة تكريم'))),
+  update() {
+    const H = col('honors').sort((a, b) => (b.year || 0) - (a.year || 0));
+    pc().innerHTML = H.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${H.map(h => `<div class="glass-card rounded-2xl p-4 space-y-1 border-t-4 border-t-amber-500"><div class="flex justify-between"><i class="fas fa-award text-amber-400 text-xl"></i><span class="flex">${editDel('honors', 'editHonor', 'delHonor', h)}</span></div><h3 class="font-bold text-amber-300">${esc(h.person)}</h3><div class="text-[12px]">${esc(h.title)}</div>${h.year ? `<div class="text-[10px] text-slate-400">${esc(h.year)}</div>` : ''}${h.desc ? `<p class="text-[11px] text-slate-300">${esc(h.desc)}</p>` : ''}</div>`).join('')}</div>` : empty('لا توجد تكريمات بعد');
+  }
+};
+function honorForm(h) {
+  openForm({
+    title: h ? 'تعديل تكريم' : 'إضافة تكريم', values: h || { year: new Date().getFullYear() },
+    fields: [{ k: 'person', label: 'اسم المكرَّم', req: 1, max: 80 }, { k: 'title', label: 'سبب التكريم / الإنجاز', req: 1, max: 120 }, { k: 'year', label: 'السنة', type: 'number', min: 1900 }, { k: 'desc', label: 'تفاصيل', type: 'textarea', max: 300 }],
+    onSubmit: v => { if (v.year && (+v.year < 1900 || +v.year > new Date().getFullYear() + 1)) return 'السنة غير صحيحة'; v.year = v.year ? +v.year : ''; saveItem('honors', h && h.id, v); log(h ? 'تعديل' : 'إضافة', 'honors', v.person); toast('تم الحفظ'); }
+  });
+}
+
+/* === الدردشة === */
+PAGES.chat = {
+  shell: () => hd('fa-comments', 'ملتقى العائلة', 'دردشة حية بين أفراد العائلة (آخر 100 رسالة)') + `<div class="glass-panel rounded-2xl p-3 space-y-3"><div id="chatBox" class="h-[50vh] overflow-y-auto custom-scrollbar space-y-2 pr-1"></div><form id="chatForm" class="flex gap-2 no-print"><input id="chatInput" maxlength="500" autocomplete="off" placeholder="اكتب رسالتك..." class="fld flex-grow" aria-label="الرسالة"><button class="bg-amber-500 text-slate-950 font-bold px-4 rounded-xl text-xs"><i class="fas fa-paper-plane"></i></button></form></div>`,
+  bind() {
+    $('#chatForm').onsubmit = e => {
+      e.preventDefault(); const i = $('#chatInput'), t = i.value.trim();
+      if (!t) return; if (!guard('chat', 'add')) return;
+      saveItem('chat', null, { text: t, name: uname(me.id) }); i.value = '';
+    };
+  },
+  update() {
+    const box = $('#chatBox'); if (!box) return;
+    const near = box.scrollHeight - box.scrollTop - box.clientHeight < 80 || !box.dataset.init; box.dataset.init = 1;
+    const M = col('chat').sort((a, b) => a.ts - b.ts).slice(-100);
+    box.innerHTML = M.length ? M.map(m => { const mine = me && m.by === me.id; return `<div class="flex ${mine ? 'justify-start' : 'justify-end'}"><div class="max-w-[80%] rounded-2xl px-3 py-1.5 ${mine ? 'bg-amber-500/20 border border-amber-500/40' : 'bg-slate-800 border border-slate-700'}"><div class="text-[10px] text-slate-400 flex justify-between gap-3"><span>${esc(m.name)}</span><span>${new Date(m.ts).toLocaleTimeString('ar-EG-u-nu-latn', { hour: '2-digit', minute: '2-digit' })}${can('chat', 'del', m) ? btn('delMsg', m.id, 'fa-times', 'حذف', 'text-red-400') : ''}</span></div><div class="text-[12px] whitespace-pre-wrap break-words">${esc(m.text)}</div></div></div>`; }).join('') : '<p class="text-center text-slate-500 pt-10">لا توجد رسائل بعد</p>';
+    if (near) box.scrollTop = box.scrollHeight;
+  }
+};
+
+/* === الذكريات === */
+PAGES.memories = {
+  shell: simpleShell(() => hd('fa-photo-video', 'الذكريات والوسائط', 'أرشيف صور وذكريات العائلة', addBtn('memories', 'addMemory', 'إضافة ذكرى'))),
+  update() {
+    const M = col('memories').sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    pc().innerHTML = M.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">${M.map(m => { const img = safeUrl(m.img, true); return `<div class="glass-card rounded-2xl overflow-hidden">${img ? `<img src="${esc(img)}" alt="${esc(m.title)}" loading="lazy" referrerpolicy="no-referrer" class="w-full h-44 object-cover">` : '<div class="h-24 bg-slate-800 flex items-center justify-center text-slate-600 text-3xl"><i class="fas fa-image"></i></div>'}<div class="p-3 space-y-1"><div class="flex justify-between"><b class="text-pink-300">${esc(m.title)}</b><span class="flex">${editDel('memories', 'editMemory', 'delMemory', m)}</span></div>${m.year ? `<div class="text-[10px] text-slate-400">${esc(m.year)}</div>` : ''}${m.desc ? `<p class="text-[11px] text-slate-300">${esc(m.desc)}</p>` : ''}<div class="text-[10px] text-slate-500">بواسطة ${esc(uname(m.by))}</div></div></div>`; }).join('')}</div>` : empty('لا توجد ذكريات بعد');
+  }
+};
+function memoryForm(m) {
+  openForm({
+    title: m ? 'تعديل ذكرى' : 'إضافة ذكرى', values: m || {},
+    fields: [{ k: 'title', label: 'العنوان', req: 1, max: 100 }, { k: 'year', label: 'السنة / الفترة', max: 30 }, { k: 'desc', label: 'الوصف', type: 'textarea', max: 300 }, { k: 'file', label: 'رفع صورة', type: 'file', help: 'تُصغَّر الصورة تلقائيًا قبل الحفظ' }, { k: 'url', label: 'أو رابط صورة', type: 'url', ph: 'https://', help: 'يُستخدم إن لم تُرفع صورة' }],
+    onSubmit: async v => {
+      let img = m && m.img || '';
+      if (v.file) img = await resizeImage(v.file); else if (v.url) { img = safeUrl(v.url); if (!img) return 'رابط الصورة يجب أن يبدأ بـ https://'; }
+      const { file, url, ...rest } = v; saveItem('memories', m && m.id, { ...rest, img }); log(m ? 'تعديل' : 'إضافة', 'memories', v.title); toast('تم الحفظ');
+    }
+  });
+}
+
+/* === إدارة الصلاحيات (مسؤول) === */
+PAGES.permissions = {
+  shell: () => hd('fa-sliders-h', 'إدارة الحسابات والصلاحيات', 'كلمات المرور والأدوار والصلاحيات الدقيقة لكل عضو', `${DB.mode === 'cloud' ? '<label class="text-[11px] text-slate-200 flex items-center gap-1.5 ml-2"><input type="checkbox" id="pubView" data-chg="pubView"> مشاهدة الزوار</label>' : ''}<button data-act="addUser" class="bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl"><i class="fas fa-user-plus ml-1"></i>حساب جديد</button>`) + `<div id="pc" class="space-y-4"></div><input type="file" id="importFile" accept="application/json" class="hidden">`,
+  bind() { $('#importFile').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) importData(f); }; },
+  update() {
+    const pv = $('#pubView'); if (pv) pv.checked = DB.get('meta/publicView') === true;
+    const U = Object.entries(DB.get('users') || {}).map(([id, u]) => ({ id, ...u })).sort((a, b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name, 'ar')));
+    pc().innerHTML = reviewCard() + reqCard() + `<div class="glass-panel rounded-2xl p-3 overflow-x-auto custom-scrollbar"><table class="w-full text-[11px]"><thead class="text-slate-400"><tr><th class="text-right p-2">الاسم</th><th class="p-2">الدور</th><th class="p-2">كلمة المرور</th><th class="p-2">إجراءات</th></tr></thead><tbody>${U.map(u => `<tr class="border-t border-slate-800"><td class="p-2">${esc(u.name)}</td><td class="p-2 text-center">${u.id === 'admin' ? 'مسؤول' : `<select data-chg="role" data-id="${esc(u.id)}" class="fld" style="width:auto"><option value="member" ${u.role === 'member' ? 'selected' : ''}>عضو</option><option value="admin" ${u.role === 'admin' ? 'selected' : ''}>مسؤول</option></select>`}</td><td class="p-2 text-center ${hasCred(u) || cloudAdmin(u.id) ? 'text-emerald-400' : 'text-amber-400'}">${hasCred(u) || cloudAdmin(u.id) ? (cloudAdmin(u.id) ? 'عبر البريد' : 'مُعيَّنة') : 'غير مُعيَّنة'}${u.role === 'admin' && DB.mode !== 'cloud' ? `<div class="text-[10px] ${u.rec ? 'text-slate-400' : 'text-red-300'}">${u.rec ? 'له رمز استرداد' : 'بلا رمز استرداد'}</div>` : ''}</td><td class="p-2 text-center whitespace-nowrap">${btn('setPw', u.id, 'fa-key', 'تعيين كلمة مرور')}${u.role !== 'admin' ? btn('editPerms', u.id, 'fa-user-shield', 'الصلاحيات') : ''}${u.id !== 'admin' && u.id !== me.id ? btn('delUser', u.id, 'fa-trash', 'حذف الحساب', 'text-red-400') : ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="glass-panel rounded-2xl p-4 space-y-3"><h3 class="font-bold text-amber-400 text-sm"><i class="fas fa-database ml-2"></i>النسخ الاحتياطي والأدوات</h3><div class="flex flex-wrap gap-2"><button data-act="exportData" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl"><i class="fas fa-download ml-1"></i>تصدير نسخة احتياطية</button><button data-act="importPick" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl"><i class="fas fa-upload ml-1"></i>استيراد نسخة</button><button data-act="sample" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl"><i class="fas fa-seedling ml-1"></i>تحميل بيانات تجريبية</button></div>
+    <p class="text-[10px] text-slate-400">النسخة الاحتياطية تشمل السجل والصناديق والمناسبات وغيرها، ولا تشمل الحسابات وكلمات المرور.</p>
+    <details class="text-[11px] text-amber-200/90"><summary class="cursor-pointer">⚠ ملاحظة أمنية مهمة</summary><p class="mt-2 leading-relaxed">التحقق من الدخول والصلاحيات هنا يتم داخل المتصفح، فهو يمنع الاستخدام العادي لكنه لا يمنع مطوّرًا يفتح أدوات المتصفح، وإذا كانت قواعد Firebase مفتوحة فيمكن لأي شخص يملك رابط قاعدة البيانات قراءتها وتعديلها. للحماية الحقيقية فعّل Firebase Authentication وقيّد قواعد القراءة والكتابة بالمستخدمين المسجلين.</p></details></div>`;
+  }
+};
+function permsModal(id) {
+  const u = DB.get('users/' + id) || {}, P = u.perms || {}, A = [['add', 'إضافة'], ['edit', 'تعديل'], ['del', 'حذف']];
+  const rows = Object.entries(MODS).map(([k, m]) => `<tr class="border-t border-slate-800"><td class="p-1.5">${esc(m.name)}</td>${A.map(([a]) => { const v = P[k] && P[k][a]; return `<td class="p-1.5"><select id="pm_${k}_${a}" class="fld"><option value="">افتراضي</option><option value="1" ${v === true ? 'selected' : ''}>مسموح</option><option value="0" ${v === false ? 'selected' : ''}>ممنوع</option></select></td>`; }).join('')}</tr>`).join('');
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><div class="glass-panel rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-4 space-y-3" role="dialog" aria-modal="true"><div class="flex justify-between"><h3 class="font-bold text-amber-400 text-sm">صلاحيات: ${esc(u.name)}</h3><button data-act="closeModal" class="text-slate-400" aria-label="إغلاق"><i class="fas fa-times"></i></button></div><p class="text-[10px] text-slate-400">الافتراضي: العضو يضيف، ويعدّل ما أضافه فقط، ويحذف رسائله وذكرياته فقط. "مسموح" يمنح الصلاحية على كل السجلات.</p><table class="w-full text-[11px]"><thead class="text-slate-400"><tr><th class="text-right p-1.5">القسم</th><th>إضافة</th><th>تعديل</th><th>حذف</th></tr></thead><tbody>${rows}</tbody></table><div class="flex gap-2 justify-end"><button data-act="closeModal" class="px-4 py-2 rounded-xl bg-slate-700 text-xs">إلغاء</button><button data-act="savePerms" data-id="${esc(id)}" class="px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">حفظ</button></div></div></div>`;
+}
+function exportData() {
+  const o = {}; Object.values(MODS).forEach(m => { const v = DB.get(m.node); if (v) o[m.node] = v; });
+  const blob = new Blob([JSON.stringify({ app: 'qadoura', v: 2, at: new Date().toISOString(), data: o }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'qadoura-backup-' + todayStr() + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  log('تصدير', 'system', 'نسخة احتياطية');
+}
+const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+function deepClean(v, d = 0) {
+  if (d > 8) return null;
+  if (Array.isArray(v)) return v.slice(0, 200).map(x => deepClean(x, d + 1));
+  if (v && typeof v === 'object') { const o = {}; for (const [k, x] of Object.entries(v)) { if (BAD_KEYS.has(k) || /[.$#\[\]\/]/.test(k) || !k) continue; o[k] = deepClean(x, d + 1); } return o; }
+  return typeof v === 'string' ? v.slice(0, 400000) : (typeof v === 'number' || typeof v === 'boolean' ? v : null);
+}
+function sanitizeCollection(o) {
+  const out = {}; if (!o || typeof o !== 'object' || Array.isArray(o)) return out;
+  for (const [k, v] of Object.entries(o)) { if (!ID_RE.test(k) || BAD_KEYS.has(k) || !v || typeof v !== 'object') continue; out[k] = deepClean(v); }
+  return out;
+}
+async function importData(file) {
+  try {
+    if (file.size > 8 * 1024 * 1024) { toast('الملف كبير جدًا (الحد 8 ميجابايت)', 'err'); return; }
+    const j = JSON.parse(await file.text());
+    if (!j || j.app !== 'qadoura' || typeof j.data !== 'object') throw 0;
+    const allowed = Object.values(MODS).map(m => m.node), d = {};
+    Object.keys(j.data).forEach(k => { if (allowed.includes(k)) d[k] = sanitizeCollection(j.data[k]); });
+    if (!await confirmBox('سيتم استبدال كل بيانات السجل والصناديق والمناسبات بمحتوى النسخة. هل أنت متأكد؟')) return;
+    DB.replaceCollections(d); log('استيراد', 'system', file.name); toast('تم الاستيراد');
+  } catch (e) { toast('ملف النسخة غير صالح', 'err'); }
+}
+function loadSample() {
+  const mk = (name, g, birth, parent, extra = {}) => { const id = uid(); DB.set('members/' + id, clean({ name, gender: g, birth, parent, marital: 'متزوج', by: me.id, ts: Date.now(), ...extra })); return id; };
+  const a = mk('عبدالله قدورة (جد تجريبي)', 'ذكر', '1940-03-12', '', { death: '2015-06-01' });
+  const b = mk('محمد قدورة (تجريبي)', 'ذكر', '1968-05-20', a), c = mk('سارة قدورة (تجريبي)', 'أنثى', '1972-09-02', a);
+  mk('أحمد قدورة (تجريبي)', 'ذكر', '1995-01-15', b, { marital: 'أعزب', city: 'القاهرة' });
+  mk('ليلى قدورة (تجريبي)', 'أنثى', '1998-11-30', b, { marital: 'أعزب' });
+  mk('عمر قدورة (تجريبي)', 'ذكر', new Date().getFullYear() + '-02-10', c, { marital: 'أعزب' });
+  log('بيانات تجريبية', 'system', '6 أفراد'); toast('تم تحميل البيانات التجريبية');
+}
+
+/* === سجل التدقيق (مسؤول) === */
+PAGES.audit = {
+  shell: () => hd('fa-history', 'سجل التدقيق', 'آخر العمليات المسجلة على المنصة', `<select data-chg="auditMod" aria-label="تصفية" class="fld sm:w-48"><option value="">كل الأقسام</option>${Object.entries(MODS).map(([k, m]) => `<option value="${k}" ${ui.auditMod === k ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}<option value="auth" ${ui.auditMod === 'auth' ? 'selected' : ''}>الدخول</option><option value="system" ${ui.auditMod === 'system' ? 'selected' : ''}>النظام</option></select>`) + '<div id="pc" class="glass-panel rounded-2xl p-3 overflow-x-auto custom-scrollbar"></div>',
+  update() {
+    const A = col('audit').filter(a => !ui.auditMod || a.mod === ui.auditMod).sort((a, b) => b.ts - a.ts).slice(0, 200);
+    pc().innerHTML = A.length ? `<table class="w-full text-[11px]"><thead class="text-slate-400"><tr><th class="text-right p-1.5">الوقت</th><th class="text-right p-1.5">المستخدم</th><th class="text-right p-1.5">الإجراء</th><th class="text-right p-1.5">القسم</th><th class="text-right p-1.5">التفاصيل</th></tr></thead><tbody>${A.map(a => `<tr class="border-t border-slate-800"><td class="p-1.5 whitespace-nowrap">${new Date(a.ts).toLocaleString('ar-EG-u-nu-latn')}</td><td class="p-1.5">${esc(a.name)}</td><td class="p-1.5 text-amber-300">${esc(a.action)}</td><td class="p-1.5">${esc((MODS[a.mod] || {}).name || a.mod)}</td><td class="p-1.5 text-slate-300">${esc(a.detail)}</td></tr>`).join('')}</tbody></table>` : '<p class="text-slate-400 text-center">لا توجد سجلات</p>';
+  }
+};
+
+/* ---------- التنقل والعرض ---------- */
+const TABS = [['stats', 'لوحة الإحصائيات', 'fa-chart-pie', 'text-cyan-300'], ['registry', 'السجل المدني', 'fa-id-card', 'text-blue-400'], ['tree', 'شجرة العائلة', 'fa-sitemap', 'text-amber-300'], ['fund', 'التبرعات والجمعيات', 'fa-hand-holding-usd', 'text-amber-400'], ['events', 'المناسبات والفرق', 'fa-calendar-alt', 'text-purple-400'], ['meetings', 'الاجتماعات والتصويت', 'fa-video', 'text-teal-300'], ['directory', 'دليل العائلة', 'fa-address-book', 'text-emerald-300'], ['honors', 'لوحة الشرف', 'fa-award', 'text-amber-300'], ['chat', 'ملتقى الدردشة', 'fa-comments', 'text-emerald-400'], ['memories', 'الذكريات والوسائط', 'fa-photo-video', 'text-pink-400'], ['permissions', 'إدارة الصلاحيات', 'fa-sliders-h', 'text-amber-400'], ['audit', 'سجل التدقيق', 'fa-history', 'text-amber-400']];
+const pendingDocs = () => {
+  if (DB.mode !== 'cloud' || role() !== 'admin') return [];
+  const out = [];
+  APPROVAL.forEach(n => col(n).forEach(x => { if (x.status === 'pending') out.push({ kind: 'doc', node: n, id: x.id, label: x.name || x.title || n, by: x.by, ts: x.ts, sum: n }); }));
+  col('funds').forEach(f => Object.entries(f.contribs || {}).forEach(([cid, c]) => { if (c.status === 'pending') out.push({ kind: 'contrib', node: 'funds', id: f.id, cid, label: `مساهمة ${fnum(c.amount)} ${f.cur || ''} من ${c.who || '—'} إلى «${f.name}»`, by: c.by, ts: c.ts, sum: 'مساهمة' }); }));
+  return out;
+};
+const pendingReqs = () => (DB.mode === 'cloud' && role() === 'admin') ? col('requests').sort((a, b) => (+a.ts || 0) - (+b.ts || 0)) : [];
+function reviewCard() {
+  const D = pendingDocs(); if (!D.length) return '';
+  const nm = { members: 'السجل المدني', funds: 'التبرعات', events: 'المناسبات', meetings: 'الاجتماعات', ballots: 'التصويت', honors: 'لوحة الشرف', memories: 'الذكريات', 'مساهمة': 'مساهمة' };
+  return `<div class="glass-panel rounded-2xl p-3 border border-emerald-500/40"><h3 class="font-bold text-emerald-400 text-sm mb-2"><i class="fas fa-clipboard-check ml-1"></i>بانتظار اعتمادك (${D.length})</h3><p class="text-[10px] text-slate-400 mb-2">ما يضيفه الأعضاء لا يظهر للآخرين ولا يدخل الإحصائيات إلا بعد اعتمادك.</p><div class="space-y-2">${D.map(d => `<div class="bg-slate-900/60 rounded-xl p-2 flex flex-wrap items-center gap-2 text-[12px]"><span class="text-[10px] bg-slate-700 rounded px-1.5 py-0.5">${esc(nm[d.sum] || d.sum)}</span><div class="flex-1 min-w-[160px]"><b>${esc(d.label)}</b><div class="text-[10px] text-slate-400">بواسطة ${esc(uname(d.by))}</div></div><button data-act="apprItem" data-k="${d.kind}" data-node="${esc(d.node)}" data-id="${esc(d.id)}" data-cid="${esc(d.cid || '')}" class="bg-emerald-600 text-white text-[11px] px-3 py-1 rounded-lg">اعتماد</button><button data-act="rejItem" data-k="${d.kind}" data-node="${esc(d.node)}" data-id="${esc(d.id)}" data-cid="${esc(d.cid || '')}" class="bg-red-600/80 text-white text-[11px] px-3 py-1 rounded-lg">رفض</button></div>`).join('')}</div></div>`;
+}
+function reqCard() {
+  const R = pendingReqs(); if (!R.length) return '';
+  return `<div class="glass-panel rounded-2xl p-3 border border-amber-500/40"><h3 class="font-bold text-amber-400 text-sm mb-2"><i class="fas fa-user-clock ml-1"></i>طلبات الانضمام (${R.length})</h3><div class="space-y-2">${R.map(r => `<div class="bg-slate-900/60 rounded-xl p-2 flex flex-wrap items-center gap-2 text-[12px]"><div class="flex-1 min-w-[180px]"><b>${esc(r.name)}</b> <span dir="ltr" class="text-slate-400">${esc(r.phone || '')}</span>${r.note ? `<div class="text-[11px] text-slate-400">${esc(r.note)}</div>` : ''}${+r.ts ? `<div class="text-[10px] text-slate-500">${new Date(+r.ts).toLocaleString('ar-EG-u-nu-latn')}</div>` : ''}</div><button data-act="reqAccept" data-id="${esc(r.id)}" class="bg-emerald-600 text-white text-[11px] px-3 py-1 rounded-lg">قبول وتعيين كلمة مرور</button><button data-act="reqReject" data-id="${esc(r.id)}" class="bg-red-600/80 text-white text-[11px] px-3 py-1 rounded-lg">رفض</button></div>`).join('')}</div></div>`;
+}
+const visibleTabs = () => { const r = role(); return TABS.filter(t => (t[0] === 'permissions' || t[0] === 'audit') ? r === 'admin' : t[0] === 'chat' ? r !== 'visitor' : true); };
+function renderNav() {
+  $('#navBar').innerHTML = visibleTabs().map(t => `<button data-act="tab" data-id="${t[0]}" ${ui.page === t[0] ? 'aria-current="page"' : ''} class="px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition ${ui.page === t[0] ? 'bg-emerald-600 text-white' : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700'}"><i class="fas ${t[2]} ${t[3]}"></i> ${t[1]}${t[0] === 'permissions' && (pendingReqs().length + pendingDocs().length) ? `<span class="bg-amber-500 text-slate-950 rounded-full text-[10px] font-black px-1.5" title="طلبات انضمام">${(pendingReqs().length + pendingDocs().length)}</span>` : ''}${t[0] === 'meetings' && pendingVotes() ? `<span class="bg-amber-500 text-slate-950 rounded-full text-[10px] font-black px-1.5" title="تصويتات تنتظر صوتك">${pendingVotes()}</span>` : ''}</button>`).join('');
+}
+function switchPage(name) {
+  if (!visibleTabs().some(t => t[0] === name)) name = 'stats';
+  ui.page = name; renderNav();
+  const P = PAGES[name]; root().innerHTML = P.shell(); if (P.bind) P.bind(); P.update(); window.scrollTo({ top: 0 });
+}
+function refresh() {
+  if (!me) { fillLogin(); return; }
+  if (!DB.get('users/' + me.id) && me.id !== 'visitor') { logout(); return; }
+  const r = role();
+  if (r !== ui.lastRole) { ui.lastRole = r; switchPage(ui.page); } else PAGES[ui.page].update();
+  $('#btnAccount').classList.toggle('hidden', r === 'visitor'); if (DB.mode === 'local') setConn(null); renderNav();
+  $('#currentRoleBadge').textContent = me.id === 'visitor' ? 'زائر (مشاهدة فقط)' : uname(me.id) + (r === 'admin' ? ' · مسؤول' : '');
+  $('#modeLabel').textContent = DB.mode === 'cloud' ? 'مزامنة سحابية مباشرة (Firebase)' : 'وضع محلي: البيانات في هذا المتصفح فقط';
+}
+
+/* ---------- تسجيل الدخول ---------- */
+let seeding = false;
+function fillLogin() {
+  if (!DB.get('users')) { if (!seeding) { seeding = true; seedUsers(); setTimeout(() => { seeding = false; }, 4000); } return; }
+  $('#loginLoading').classList.add('hidden'); $('#loginForm').classList.remove('hidden');
+  $('#storageWarn').classList.toggle('hidden', storageOK); $('#resetLink').classList.toggle('hidden', DB.mode !== 'local');
+  const sel = $('#loginUserSelect'), cur = sel.value;
+  const U = Object.entries(DB.get('users')).map(([id, u]) => ({ id, ...u })).sort((a, b) => (a.id === 'admin' ? -1 : b.id === 'admin' ? 1 : a.name.localeCompare(b.name, 'ar')));
+  sel.innerHTML = U.map(u => `<option value="${esc(u.id)}">${esc(u.name)}${u.role === 'admin' ? ' (مسؤول)' : ''}</option>`).join('') + (DB.mode !== 'cloud' || DB.get('meta/publicView') === true ? '<option value="visitor">زائر عام (مشاهدة فقط)</option>' : '');
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  loginMode();
+  const s = SS.get('qd_sess');
+  const au = (window.firebase && DB.mode === 'cloud' && firebase.auth) ? firebase.auth().currentUser : null;
+  const su = DB.get('users/' + s), okAdmin = DB.mode !== 'cloud' || (s === 'visitor' && DB.get('meta/publicView') === true) || (s === 'admin' ? (au && au.email === ADMIN_EMAIL && au.emailVerified) : (au && !au.isAnonymous && su && au.email === su.akey + '@' + AUTH_DOM));
+  if (s && !me && okAdmin && (s === 'visitor' || DB.get('users/' + s))) startSession(s, true);
+}
+function loginMode() {
+  const id = $('#loginUserSelect').value, u = DB.get('users/' + id), hint = $('#loginHint');
+  $('#passWrap').classList.toggle('hidden', id === 'visitor'); $('#loginErrorMsg').classList.add('hidden');
+  const cl = cloudAdmin(id), setup = id === 'admin' && !!u && !hasCred(u) && !cl;
+  $('#confirmWrap').classList.toggle('hidden', !setup); $('#forgotLink').classList.toggle('hidden', id === 'visitor' || setup);
+  let h = '', t = 'تسجيل الدخول', l = 'كلمة المرور:';
+    if (cl) { h = `يتم تسجيل دخول المسؤول بحساب البريد ${maskedEmail}. أول مرة أو نسيت كلمة المرور؟ اضغط الرابط بالأسفل وسيصلك على بريدك رابط لتعيين كلمة مرور جديدة.`; }
+  else if (id !== 'visitor' && u && !hasCred(u)) {
+    if (id === 'admin') { h = `أول استخدام: اختر كلمة مرور قوية للمسؤول (${MINPW} أحرف على الأقل). بعدها سيُعطى لك رمز استرداد، احتفظ به.`; t = 'إنشاء كلمة المرور والدخول'; l = 'كلمة مرور المسؤول الجديدة:'; }
+    else h = 'لم تُعيَّن كلمة مرور لهذا الحساب بعد. اطلب من المسؤول تعيينها.';
+  }
+  $('#reqLink').classList.toggle('hidden', DB.mode !== 'cloud');
+  $('#forgotText').textContent = cl ? 'أول مرة أو نسيت كلمة المرور؟ أرسل رابطًا إلى بريدي' : 'نسيت كلمة المرور؟';
+  hint.textContent = h; hint.classList.toggle('hidden', !h); $('#loginBtnText').textContent = t; $('#passLabel').textContent = l;
+}
+function loginErr(m) { const e = $('#loginErrorMsg'); e.textContent = m; e.classList.remove('hidden'); }
+const doLogin = e => { e.preventDefault(); return doLoginInner(e).catch(x => { console.error(x); loginErr('تعذّر تسجيل الدخول: ' + (x && x.message || x)); }); };
+async function doLoginInner(e) {
+  e.preventDefault();
+  const id = $('#loginUserSelect').value;
+  if (id === 'visitor') return startSession('visitor');
+  const u = DB.get('users/' + id); if (!u) return;
+  if (isLocked()) return loginErr('محاولات كثيرة، انتظر نصف دقيقة ثم أعد المحاولة');
+  const pw = $('#loginPasswordInput').value;
+  if (cloudAdmin(id)) {
+    if (!pw) return loginErr('اكتب كلمة المرور، أو اضغط «أول مرة أو نسيت كلمة المرور» ليصلك رابط على بريدك');
+    let cr; try { cr = await firebase.auth().signInWithEmailAndPassword(ADMIN_EMAIL, pw); }
+    catch (ex) { if (ex.code !== 'auth/network-request-failed' && ex.code !== 'auth/too-many-requests' && ex.code !== 'auth/operation-not-allowed') failAdd(); return loginErr(authErr(ex) + (/غير صحيحة/.test(authErr(ex)) ? '. إن لم تنشئها بعد أو نسيتها اضغط «أول مرة أو نسيت كلمة المرور».' : '')); }
+    if (!cr.user.emailVerified) { try { await cr.user.sendEmailVerification(); } catch (_) { } try { await firebase.auth().signOut(); } catch (_) { } return loginErr('البريد لم يُفعَّل بعد. أرسلنا رابط تفعيل إلى ' + maskedEmail + '، افتحه ثم سجّل الدخول (أو استخدم رابط «نسيت كلمة المرور»).'); }
+    failReset(); await DB.reattach(); return startSession('admin');
+  }
+  if (DB.mode === 'cloud') {
+    if (!u.akey) return loginErr('لم تُعيَّن كلمة مرور لهذا الحساب بعد. اطلب من المسؤول تعيينها.');
+    try { await firebase.auth().signInWithEmailAndPassword(u.akey + '@' + AUTH_DOM, pw); }
+    catch (ex) { if (ex.code !== 'auth/network-request-failed' && ex.code !== 'auth/too-many-requests' && ex.code !== 'auth/operation-not-allowed') failAdd(); return loginErr(authErr(ex)); }
+    failReset(); await DB.reattach(); return startSession(id);
+  }
+  if (!hasCred(u)) {
+    if (id !== 'admin') return loginErr('لا توجد كلمة مرور لهذا الحساب، اطلبها من المسؤول');
+    if (pw.length < MINPW) return loginErr(`كلمة المرور ${MINPW} أحرف على الأقل`);
+    if (pw !== $('#loginPassword2').value) return loginErr('كلمتا المرور غير متطابقتين');
+    if (!await DB.setIfAbsent('users/admin/cred', await makeCred(pw))) return loginErr('أُنشئت كلمة مرور المسؤول من جهاز آخر قبل لحظات. أعد تحميل الصفحة ثم سجّل الدخول.');
+    const code = await issueRecovery('admin'); $('#loginPassword2').value = '';
+    startSession('admin'); log('إنشاء حساب المسؤول', 'system', 'أول إعداد'); showRecovery(code, uname('admin')); return;
+  }
+  const c = credOf(u);
+  if (await checkCred(c, pw)) {
+    failReset();
+    if (c.algo !== 'p2' && window.crypto && crypto.subtle) await setPassword(id, pw); /* ترحيل الصيغة القديمة */
+    startSession(id);
+  } else { failAdd(); loginErr('كلمة المرور غير صحيحة'); }
+}
+function forgotPassword() {
+  const id = $('#loginUserSelect').value, u = DB.get('users/' + id);
+  if (id === 'visitor' || !u) return;
+  if (cloudAdmin(id)) {
+    $('#loginErrorMsg').classList.add('hidden');
+    return confirmBox('سنرسل رابطًا لتعيين كلمة مرور المسؤول إلى البريد ' + maskedEmail + '. هل تريد المتابعة؟').then(async yes => {
+      if (!yes) return;
+      try { await adminMailSetup(); infoBox('تم إرسال الرابط', '<p>افتح بريدك <b dir="ltr">' + esc(ADMIN_EMAIL) + '</b> واضغط الرابط لتعيين كلمة المرور، ثم ارجع وسجّل الدخول.</p><p class="text-slate-400">إن لم تجد الرسالة فابحث في «البريد المزعج» (Spam). قد تتأخر دقيقة.</p>'); }
+      catch (ex) { loginErr('تعذّر إرسال الرابط: ' + authErr(ex)); }
+    });
+  }
+  if (u.role !== 'admin') return infoBox('نسيت كلمة المرور؟', '<p>اطلب من مسؤول المنصة تعيين كلمة مرور جديدة لك، فهو يستطيع ذلك من صفحة «إدارة الصلاحيات».</p>');
+  const help = DB.mode === 'cloud'
+    ? 'فقدت الرمز؟ من لوحة Firebase افتح Realtime Database ثم qadoura_v2 ثم users ثم ' + id + '، واحذف العقدة cred، ثم أعد تحميل الموقع لتنشئ كلمة جديدة.'
+    : 'فقدت الرمز؟ استخدم رابط «إعادة ضبط البيانات المحلية» أسفل شاشة الدخول (يمسح بيانات هذا المتصفح).';
+  openForm({
+    title: 'استرداد كلمة مرور: ' + u.name, submit: 'استرداد',
+    fields: [
+      { k: 'code', label: 'رمز الاسترداد', req: 1, max: 40, ph: 'XXXX-XXXX-XXXX-XXXX-XXXX', help },
+      { k: 'pw', label: 'كلمة المرور الجديدة', req: 1, type: 'password', max: 100, help: MINPW + ' أحرف على الأقل' },
+      { k: 'pw2', label: 'أعد كتابتها', req: 1, type: 'password', max: 100 }
+    ],
+    onSubmit: async v => {
+      if (isLocked()) return 'محاولات كثيرة، انتظر نصف دقيقة ثم أعد المحاولة';
+      if (!u.rec) return 'لا يوجد رمز استرداد محفوظ لهذا الحساب. استخدم الطريقة المكتوبة تحت حقل الرمز.';
+      if (v.pw.length < MINPW) return `كلمة المرور ${MINPW} أحرف على الأقل`;
+      if (v.pw !== v.pw2) return 'كلمتا المرور غير متطابقتين';
+      if (!await checkCred(u.rec, normCode(v.code))) { failAdd(); return 'رمز الاسترداد غير صحيح'; }
+      failReset(); await setPassword(id, v.pw);
+      const code = await issueRecovery(id);
+      startSession(id); log('استرداد كلمة المرور', 'auth', u.name); showRecovery(code, u.name);
+    }
+  });
+}
+function accountModal() {
+  const u = DB.get('users/' + me.id) || {}, adm = role() === 'admin', cl = cloudAdmin(me.id), memCloud = DB.mode === 'cloud' && !adm;
+  $('#modalRoot').innerHTML = `<div class="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3" id="modalBg"><div class="glass-panel rounded-2xl w-full max-w-md p-4 space-y-3" role="dialog" aria-modal="true"><div class="flex justify-between"><h3 class="font-bold text-amber-400 text-sm"><i class="fas fa-user-cog ml-2"></i>حسابي</h3><button data-act="closeModal" aria-label="إغلاق" class="text-slate-400"><i class="fas fa-times"></i></button></div><div class="text-[12px]"><b>${esc(u.name)}</b> · ${adm ? 'مسؤول' : 'عضو'}</div>${cl ? `<p class="text-[11px] text-slate-300">حسابك مرتبط بالبريد <b dir="ltr">${esc(ADMIN_EMAIL)}</b>. لتغيير كلمة المرور أو استردادها يصلك رابط على هذا البريد.</p><button data-act="mailReset" class="w-full bg-amber-500 text-slate-950 font-bold text-xs py-2 rounded-xl"><i class="fas fa-envelope ml-1"></i>أرسل رابط تغيير كلمة المرور إلى بريدي</button>` : memCloud ? `<p class="text-[11px] text-slate-300">لتغيير كلمة المرور اطلب من مسؤول المنصة تعيين كلمة جديدة لك.</p>` : `<button data-act="chgPw" class="w-full bg-amber-500 text-slate-950 font-bold text-xs py-2 rounded-xl"><i class="fas fa-key ml-1"></i>تغيير كلمة المرور</button>`}${adm && !cl ? `<div class="bg-slate-900/60 rounded-xl p-3 space-y-2"><div class="text-[11px] text-slate-300">رمز الاسترداد: <b class="${u.rec ? 'text-emerald-400' : 'text-red-300'}">${u.rec ? 'موجود' : 'غير موجود'}</b></div><p class="text-[10px] text-slate-400">يتيح لك استعادة حسابك إن نسيت كلمة المرور. إنشاء رمز جديد يُلغي القديم.</p><button data-act="genRec" class="w-full bg-slate-700 hover:bg-slate-600 text-xs py-2 rounded-xl"><i class="fas fa-life-ring ml-1"></i>${u.rec ? 'إنشاء رمز استرداد جديد' : 'إنشاء رمز استرداد'}</button></div>` : ''}</div></div>`;
+}
+function startSession(id, restored) {
+  me = { id }; SS.set('qd_sess', id);
+  $('#loginModal').classList.add('hidden'); $('#loginPasswordInput').value = '';
+  if (!SS.get('qd_visit')) { SS.set('qd_visit', '1'); DB.inc('meta/visitors'); }
+  if (!restored && id !== 'visitor') log('دخول', 'auth', uname(id));
+  ui.lastRole = null; ui.page = 'stats'; refresh(); seedMembersCloud();
+}
+async function signOutAuth() { try { if (DB.mode === 'cloud' && window.firebase && firebase.auth) { await firebase.auth().signOut(); await firebase.auth().signInAnonymously(); await DB.reattach(); } } catch (e) { console.warn(e); } }
+function logout() {
+  const was = me; me = null; if (was && was.id !== 'visitor') signOutAuth(); SS.del('qd_sess'); ui.lastRole = null; closeModal(); $('#confirmRoot').innerHTML = '';
+  root().innerHTML = ''; $('#navBar').innerHTML = ''; $('#currentRoleBadge').textContent = '—';
+  $('#loginModal').classList.remove('hidden'); fillLogin();
+}
+
+/* ---------- معالجات الأحداث ---------- */
+const ACT = {
+  tab: el => switchPage(el.dataset.id),
+  logout: () => { if (me && me.id !== 'visitor') log('خروج', 'auth', uname(me.id)); logout(); },
+  print: () => window.print(),
+  forgot: () => forgotPassword(),
+  reqAccess: () => openForm({
+    title: 'طلب الانضمام إلى المنصة', submit: 'إرسال الطلب', fields: [
+      { k: 'name', label: 'الاسم الكامل', req: 1, max: 100 },
+      { k: 'phone', label: 'رقم الهاتف للتواصل', req: 1, max: 30, type: 'tel' },
+      { k: 'note', label: 'ملاحظة (صلتك بالعائلة)', type: 'textarea', max: 300 }],
+    onSubmit: async v => {
+      if (v.name.length < 3) return 'اكتب الاسم الكامل';
+      if (!/^[0-9+\-\s()]{6,30}$/.test(v.phone)) return 'رقم الهاتف غير صحيح';
+      if (SS.get('qd_reqsent') && Date.now() - +SS.get('qd_reqsent') < 60000) return 'انتظر دقيقة قبل إرسال طلب آخر';
+      const ts = DB.mode === 'cloud' ? firebase.database.ServerValue.TIMESTAMP : Date.now();
+      try { await DB.setSafe('requests/' + uid(), { name: v.name, phone: v.phone, note: v.note || '', ts }); }
+      catch (e) { return 'تعذّر إرسال الطلب: ' + (e && e.message || e); }
+      SS.set('qd_reqsent', String(Date.now())); setTimeout(() => infoBox('تم إرسال طلبك', '<p>سيراجعه المسؤول، وإذا وافق سيتواصل معك ويعطيك كلمة المرور.</p>'), 0);
+    }
+  }),
+  reqAccept: el => { if (role() !== 'admin') return; const r = byId('requests', el.dataset.id); if (!r) return; openForm({
+    title: 'قبول: ' + r.name, submit: 'قبول', fields: [{ k: 'pw', label: 'كلمة مرور للعضو الجديد', req: 1, type: 'password', max: 100, help: MINPW + ' أحرف على الأقل. أبلغه بها بنفسك.' }],
+    onSubmit: async v => {
+      if (v.pw.length < MINPW) return `كلمة المرور ${MINPW} أحرف على الأقل`;
+      const id = 'u' + uid(); DB.set('users/' + id, { name: r.name, role: 'member' }); await setPassword(id, v.pw);
+      DB.remove('requests/' + r.id); log('قبول طلب انضمام', 'system', r.name); toast('تم قبول ' + r.name);
+    } }); },
+  apprItem: el => {
+    if (role() !== 'admin') return; const d = el.dataset;
+    if (d.k === 'contrib') DB.set(`funds/${d.id}/contribs/${d.cid}/status`, 'approved'); else DB.set(`${d.node}/${d.id}/status`, 'approved');
+    log('اعتماد', 'system', d.node + ' ' + d.id); toast('تم الاعتماد');
+  },
+  rejItem: async el => {
+    if (role() !== 'admin') return; const d = el.dataset;
+    if (!await confirmBox('رفض هذا الطلب وحذفه نهائيًا؟')) return;
+    if (d.k === 'contrib') DB.remove(`funds/${d.id}/contribs/${d.cid}`); else DB.remove(`${d.node}/${d.id}`);
+    log('رفض', 'system', d.node + ' ' + d.id); toast('تم الرفض');
+  },
+  reqReject: async el => { if (role() !== 'admin') return; const r = byId('requests', el.dataset.id); if (r && await confirmBox(`رفض طلب "${r.name}"؟`)) { DB.remove('requests/' + r.id); log('رفض طلب انضمام', 'system', r.name); } },
+  mailReset: async () => { try { await firebase.auth().sendPasswordResetEmail(ADMIN_EMAIL); infoBox('تم إرسال الرابط', '<p>افتح بريدك <b dir="ltr">' + esc(ADMIN_EMAIL) + '</b> واضغط الرابط لتعيين كلمة مرور جديدة.</p>'); } catch (ex) { toast('تعذّر الإرسال: ' + authErr(ex), 'err'); } },
+  myAccount: () => me && role() !== 'visitor' && accountModal(),
+  chgPw: () => openForm({
+    title: 'تغيير كلمة المرور', fields: [
+      { k: 'old', label: 'كلمة المرور الحالية', req: 1, type: 'password', max: 100 },
+      { k: 'pw', label: 'كلمة المرور الجديدة', req: 1, type: 'password', max: 100, help: MINPW + ' أحرف على الأقل' },
+      { k: 'pw2', label: 'أعد كتابتها', req: 1, type: 'password', max: 100 }],
+    onSubmit: async v => {
+      if (isLocked()) return 'محاولات كثيرة، انتظر نصف دقيقة ثم أعد المحاولة';
+      if (!await checkCred(credOf(DB.get('users/' + me.id)), v.old)) { failAdd(); return 'كلمة المرور الحالية غير صحيحة'; }
+      if (v.pw.length < MINPW) return `كلمة المرور الجديدة ${MINPW} أحرف على الأقل`;
+      if (v.pw !== v.pw2) return 'كلمتا المرور غير متطابقتين';
+      failReset(); await setPassword(me.id, v.pw); log('تغيير كلمة المرور', 'auth', uname(me.id)); toast('تم تغيير كلمة المرور');
+    }
+  }),
+  genRec: () => role() === 'admin' && openForm({
+    title: 'إنشاء رمز استرداد جديد', submit: 'إنشاء', fields: [{ k: 'pw', label: 'أكّد بكلمة مرورك الحالية', req: 1, type: 'password', max: 100, help: 'الرمز الجديد يُلغي أي رمز قديم.' }],
+    onSubmit: async v => {
+      if (isLocked()) return 'محاولات كثيرة، انتظر نصف دقيقة ثم أعد المحاولة';
+      if (!await checkCred(credOf(DB.get('users/' + me.id)), v.pw)) { failAdd(); return 'كلمة المرور غير صحيحة'; }
+      failReset(); const code = await issueRecovery(me.id); log('رمز استرداد جديد', 'auth', uname(me.id)); setTimeout(() => showRecovery(code, uname(me.id)), 0);
+    }
+  }),
+  recCopy: async () => { if (recCurrent) toast(await copyText(recCurrent.code) ? 'تم نسخ الرمز' : 'تعذّر النسخ، انسخه يدويًا', 'ok'); },
+  recDl: () => {
+    if (!recCurrent) return;
+    const t = `رمز استرداد حساب: ${recCurrent.who}\nالرمز: ${recCurrent.code}\nالتاريخ: ${todayStr()}\n\nاحتفظ بهذا الملف في مكان آمن ولا تشاركه مع أحد.\n`.replace(/\\n/g, '\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + t], { type: 'text/plain;charset=utf-8' })); a.download = 'qadoura-recovery-code.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  },
+  recDone: () => { recCurrent = null; $('#recRoot').innerHTML = ''; },
+  resetLocal: async () => {
+    if (!await confirmBox('سيتم مسح كل البيانات المحفوظة في هذا المتصفح (الحسابات وكلمات المرور والسجل وغيرها) والبدء من جديد. هل أنت متأكد؟')) return;
+    try { localStorage.removeItem('qadoura_db_v2'); } catch (e) { }
+    SS.del('qd_sess'); location.reload();
+  },
+  togglePw: () => { const i = $('#loginPasswordInput'), s = i.type === 'password'; i.type = s ? 'text' : 'password'; $('#togglePassIcon').className = 'fas ' + (s ? 'fa-eye-slash' : 'fa-eye'); },
+  closeModal, confirmYes: () => { $('#confirmRoot').innerHTML = ''; confirmRes && confirmRes(true); confirmRes = null; },
+  confirmNo: () => { $('#confirmRoot').innerHTML = ''; confirmRes && confirmRes(false); confirmRes = null; },
+  /* السجل */
+  addMember: () => guard('registry', 'add') && memberForm(),
+  editMember: el => { const m = byId('members', el.dataset.id); m && guard('registry', 'edit', m) && memberForm(m); },
+  delMember: async el => {
+    const id = el.dataset.id, m = byId('members', id); if (!m) return;
+    if (members().some(x => x.parent === id)) return toast('لهذا الفرد أبناء مسجلون، انقلهم أو احذفهم أولًا', 'err');
+    delItem('registry', id, x => x.name);
+  },
+  /* التبرعات */
+  addFund: () => guard('fund', 'add') && fundForm(),
+  editFund: el => { const f = byId('funds', el.dataset.id); f && guard('fund', 'edit', f) && fundForm(f); },
+  delFund: el => delItem('fund', el.dataset.id, x => x.name),
+  addContrib: el => guard('fund', 'add') && contribForm(el.dataset.id),
+  delContrib: async el => { const f = byId('funds', el.dataset.id2); if (!f || !guard('fund', 'del', f)) return; if (await confirmBox('حذف هذه المساهمة؟')) { DB.remove(`funds/${f.id}/contribs/${el.dataset.id}`); log('حذف مساهمة', 'fund', f.name); toast('تم الحذف'); } },
+  /* المناسبات */
+  addEvent: () => guard('events', 'add') && eventForm(),
+  editEvent: el => { const e = byId('events', el.dataset.id); e && guard('events', 'edit', e) && eventForm(e); },
+  delEvent: el => delItem('events', el.dataset.id, x => x.title),
+  rsvp: el => { if (role() === 'visitor') return; const p = `events/${el.dataset.id}/rsvp/${me.id}`; DB.get(p) ? DB.remove(p) : DB.set(p, true); },
+  /* الاجتماعات */
+  addMeeting: () => guard('meetings', 'add') && meetingForm(),
+  editMeeting: el => { const m = byId('meetings', el.dataset.id); m && guard('meetings', 'edit', m) && meetingForm(m); },
+  delMeeting: el => delItem('meetings', el.dataset.id, x => x.title),
+  mtab: el => { ui.mt = el.dataset.t; PAGES.meetings.update(); },
+  ballotFilter: el => { ui.bf = el.dataset.f; PAGES.meetings.update(); },
+  addBallot: () => guard('ballots', 'add') && ballotForm(),
+  addBallotFor: el => guard('ballots', 'add') && ballotForm(null, el.dataset.id),
+  editBallot: el => { const b = byId('ballots', el.dataset.id); b && guard('ballots', 'edit', b) && ballotForm(b); },
+  delBallot: el => delItem('ballots', el.dataset.id, x => x.title),
+  toggleBallot: async el => {
+    const b = byId('ballots', el.dataset.id); if (!b || !guard('ballots', 'edit', b)) return;
+    if (!bClosed(b)) { if (await confirmBox('إغلاق التصويت الآن؟ لن يتمكن أحد من التصويت بعد ذلك.')) { DB.set(`ballots/${b.id}/closed`, true); log('إغلاق تصويت', 'ballots', b.title); } return; }
+    const ended = b.end && new Date(b.end) < new Date();
+    if (!await confirmBox(ended ? 'إعادة فتح التصويت ستلغي موعد الانتهاء المحدد. متابعة؟' : 'إعادة فتح التصويت؟')) return;
+    DB.remove(`ballots/${b.id}/closed`); if (ended) DB.remove(`ballots/${b.id}/end`); log('إعادة فتح تصويت', 'ballots', b.title);
+  },
+  resetVotes: async el => { const b = byId('ballots', el.dataset.id); if (role() !== 'admin' || !b) return; if (await confirmBox('تصفير كل الأصوات نهائيًا؟')) { DB.remove(`ballots/${b.id}/votes`); log('تصفير أصوات', 'ballots', b.title); toast('تم التصفير'); } },
+  castVote: el => {
+    const b = byId('ballots', el.dataset.id); if (!b || !canVote(b)) return toast('لا يمكنك التصويت الآن', 'err');
+    const i = el.dataset.i;
+    if (i !== 'a' && (+b.multi || 1) > 1) {
+      let s = ui.sel[b.id]; if (!s) { const mv = myVote(b); s = ui.sel[b.id] = new Set((mv && mv !== 'a' ? mv.split(',') : []).filter(Boolean)); }
+      if (s.has(i)) s.delete(i); else if (s.size >= +b.multi) return toast('الحد الأقصى للاختيارات ' + b.multi, 'err'); else s.add(i);
+      return PAGES.meetings.update();
+    }
+    return submitVote(b, i);
+  },
+  submitMulti: el => {
+    const b = byId('ballots', el.dataset.id); if (!b || !canVote(b)) return toast('لا يمكنك التصويت الآن', 'err');
+    const s = ui.sel[b.id]; if (!s || !s.size) return toast('اختر خيارًا واحدًا على الأقل', 'err');
+    return submitVote(b, [...s].map(Number).sort((x, y) => x - y).join(','));
+  },
+  /* التحصيل والإحصائيات */
+  payFund: el => { const f = byId('funds', el.dataset.id); f && guard('fund', 'edit', f) && payForm(f, el.dataset.id2); },
+  quickPay: el => {
+    const f = byId('funds', el.dataset.id), m = byId('members', el.dataset.id2); if (!f || !m || !guard('fund', 'edit', f) || !(+f.perHead > 0)) return;
+    DB.set(`funds/${f.id}/pays/${m.id}`, { amount: +f.perHead, date: todayStr(), by: me.id }); log('تسجيل دفع', 'fund', `${m.name} — ${f.name}: ${f.perHead}`);
+  },
+  unpay: async el => {
+    const f = byId('funds', el.dataset.id), m = byId('members', el.dataset.id2); if (!f || !m || !guard('fund', 'edit', f)) return;
+    if (await confirmBox(`إلغاء دفع "${m.name}"؟`)) { DB.remove(`funds/${f.id}/pays/${m.id}`); log('إلغاء دفع', 'fund', `${m.name} — ${f.name}`); }
+  },
+  fundFilter: el => { ui.ff[el.dataset.id] = el.dataset.f; PAGES.fund.update(); },
+  pickCustom: el => { const f = byId('funds', el.dataset.id); f && guard('fund', 'edit', f) && pickerModal(f.id); },
+  pickAll: () => { document.querySelectorAll('#pickList label:not(.hidden) input').forEach(i => { i.checked = true; }); updatePickCount(); },
+  pickNone: () => { document.querySelectorAll('#pickList input').forEach(i => { i.checked = false; }); updatePickCount(); },
+  savePick: el => {
+    const f = byId('funds', el.dataset.id); if (!f || !guard('fund', 'edit', f)) return;
+    const o = {}; document.querySelectorAll('#pickList input:checked').forEach(i => { o[i.value] = true; });
+    DB.set(`funds/${f.id}/custom`, Object.keys(o).length ? o : null); log('تحديد أسماء', 'fund', `${f.name}: ${Object.keys(o).length}`); closeModal(); toast('تم حفظ الأسماء');
+  },
+  exportFund: el => { const f = byId('funds', el.dataset.id); f && exportFund(f); },
+  branch: el => branchModal(el.dataset.id),
+  exportHouses: () => exportHouses(),
+  /* الشرف والذكريات والدردشة */
+  addHonor: () => guard('honors', 'add') && honorForm(),
+  editHonor: el => { const h = byId('honors', el.dataset.id); h && guard('honors', 'edit', h) && honorForm(h); },
+  delHonor: el => delItem('honors', el.dataset.id, x => x.person),
+  addMemory: () => guard('memories', 'add') && memoryForm(),
+  editMemory: el => { const m = byId('memories', el.dataset.id); m && guard('memories', 'edit', m) && memoryForm(m); },
+  delMemory: el => delItem('memories', el.dataset.id, x => x.title),
+  delMsg: el => { const m = byId('chat', el.dataset.id); if (m && guard('chat', 'del', m)) DB.remove('chat/' + m.id); },
+  /* الإدارة */
+  addUser: () => role() === 'admin' && openForm({
+    title: 'حساب جديد', fields: [{ k: 'name', label: 'الاسم', req: 1, max: 60 }, { k: 'role', label: 'الدور', type: 'select', opts: [['member', 'عضو'], ['admin', 'مسؤول']] }, { k: 'pw', label: 'كلمة المرور (اختياري الآن)', type: 'password', max: 60 }],
+    onSubmit: async v => { if (v.pw && v.pw.length < MINPW) return `كلمة المرور ${MINPW} أحرف على الأقل`; const id = 'u' + uid(); DB.set('users/' + id, { name: v.name, role: v.role }); if (v.pw) await setPassword(id, v.pw); log('إنشاء حساب', 'system', v.name); toast('تم إنشاء الحساب'); }
+  }),
+  setPw: el => role() === 'admin' && openForm({
+    title: 'تعيين كلمة مرور: ' + uname(el.dataset.id), fields: [{ k: 'pw', label: 'كلمة المرور الجديدة', req: 1, type: 'password', max: 60, help: MINPW + ' أحرف على الأقل' }],
+    onSubmit: async v => { if (v.pw.length < MINPW) return `كلمة المرور ${MINPW} أحرف على الأقل`; await setPassword(el.dataset.id, v.pw); log('تغيير كلمة مرور', 'system', uname(el.dataset.id)); toast('تم تعيين كلمة المرور'); }
+  }),
+  editPerms: el => role() === 'admin' && permsModal(el.dataset.id),
+  savePerms: el => {
+    if (role() !== 'admin') return; const P = {};
+    Object.keys(MODS).forEach(k => ['add', 'edit', 'del'].forEach(a => { const v = $(`#pm_${k}_${a}`).value; if (v !== '') (P[k] = P[k] || {})[a] = v === '1'; }));
+    DB.set(`users/${el.dataset.id}/perms`, Object.keys(P).length ? P : null); log('تعديل صلاحيات', 'system', uname(el.dataset.id)); closeModal(); toast('تم حفظ الصلاحيات');
+  },
+  delUser: async el => { if (role() !== 'admin' || el.dataset.id === 'admin' || el.dataset.id === me.id) return; if (await confirmBox(`حذف حساب "${uname(el.dataset.id)}"؟`)) { const n = uname(el.dataset.id), ou = DB.get('users/' + el.dataset.id + '/uid'); if (ou) DB.remove('uids/' + ou); DB.remove('users/' + el.dataset.id); log('حذف حساب', 'system', n); toast('تم الحذف'); } },
+  exportData: () => role() === 'admin' && exportData(),
+  importPick: () => role() === 'admin' && $('#importFile').click(),
+  sample: async () => { if (role() === 'admin' && await confirmBox('إضافة 6 أفراد تجريبيين إلى السجل؟')) loadSample(); }
+};
+const CHG = {
+  pubView: el => role() === 'admin' && DB.set('meta/publicView', !!el.checked),
+  recOk: el => { const b = $('#recDone'); if (b) { b.disabled = !el.checked; b.classList.toggle('opacity-40', !el.checked); } },
+  pick: () => updatePickCount(),
+  role: el => { if (role() !== 'admin' || el.dataset.id === 'admin') return; if (el.dataset.id === me.id && el.value !== 'admin') return toast('لا يمكنك سحب صلاحياتك بنفسك', 'err'); DB.set(`users/${el.dataset.id}/role`, el.value); log('تغيير دور', 'system', uname(el.dataset.id)); },
+  auditMod: el => { ui.auditMod = el.value; PAGES.audit.update(); }
+};
+const INP = {
+  pick: el => { const q = el.value.trim(); document.querySelectorAll('#pickList label').forEach(l => l.classList.toggle('hidden', !!q && !l.dataset.name.includes(q))); },
+  registry: el => { ui.q.registry = el.value; PAGES.registry.update(); },
+  tree: el => { ui.q.tree = el.value; PAGES.tree.update(); },
+  directory: el => { ui.q.directory = el.value; PAGES.directory.update(); }
+};
+document.addEventListener('click', e => {
+  if (e.target.id === 'modalBg') return closeModal();
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const f = ACT[el.dataset.act]; if (!f) return;
+  e.preventDefault();
+  try { const r = f(el); if (r && r.catch) r.catch(x => { console.error(x); toast('حدث خطأ غير متوقع', 'err'); }); } catch (x) { console.error(x); toast('حدث خطأ غير متوقع', 'err'); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); $('#confirmRoot').innerHTML = ''; if (confirmRes) { confirmRes(false); confirmRes = null; } }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role=button][data-act]')) { e.preventDefault(); e.target.click(); }
+});
+document.addEventListener('change', e => { const el = e.target.closest('[data-chg]'); if (el && CHG[el.dataset.chg]) CHG[el.dataset.chg](el); });
+document.addEventListener('input', e => { const el = e.target.closest('[data-inp]'); if (el && INP[el.dataset.inp]) INP[el.dataset.inp](el); });
+$('#loginForm').addEventListener('submit', doLogin);
+$('#loginUserSelect').addEventListener('change', loginMode);
+
+/* تحميل مكتبة Firebase من مصادر بديلة إن حُجب المصدر الأول (بعض الشبكات تحجب gstatic) */
+function loadJs(u) { return new Promise(r => { const s = document.createElement('script'); s.src = u; s.onload = () => r(true); s.onerror = () => r(false); document.head.appendChild(s); }); }
+async function ensureFirebase() {
+  if (!FIREBASE_CONFIG || (window.firebase && firebase.database && firebase.auth)) return;
+  const V = '9.22.1', sets = [
+    [`https://cdn.jsdelivr.net/npm/firebase@${V}/firebase-app-compat.js`, `https://cdn.jsdelivr.net/npm/firebase@${V}/firebase-database-compat.js`, `https://cdn.jsdelivr.net/npm/firebase@${V}/firebase-auth-compat.js`],
+    [`https://cdnjs.cloudflare.com/ajax/libs/firebase/${V}/firebase-app-compat.js`, `https://cdnjs.cloudflare.com/ajax/libs/firebase/${V}/firebase-database-compat.js`, `https://cdnjs.cloudflare.com/ajax/libs/firebase/${V}/firebase-auth-compat.js`],
+    [`https://unpkg.com/firebase@${V}/firebase-app-compat.js`, `https://unpkg.com/firebase@${V}/firebase-database-compat.js`, `https://unpkg.com/firebase@${V}/firebase-auth-compat.js`]];
+  for (const [a, d, u] of sets) { if (await loadJs(a) && await loadJs(d) && await loadJs(u) && window.firebase && firebase.database && firebase.auth) return; }
+}
+/* حالة دخول المسؤول عبر Firebase Auth (بريد إلكتروني) */
+function authReady() {
+  if (!(FIREBASE_CONFIG && window.firebase && firebase.auth)) return Promise.resolve();
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    return new Promise(res => { let done = false; const t = setTimeout(() => { if (!done) { done = true; res(); } }, 4000);
+      firebase.auth().onAuthStateChanged(u => { if (!done) { done = true; clearTimeout(t); res(); } else if (!u && me && me.id !== 'visitor' && DB.mode === 'cloud') { logout(); } }); });
+  } catch (e) { return Promise.resolve(); }
+}
+ensureFirebase().then(authReady).then(async () => { try { if (FIREBASE_CONFIG && window.firebase && firebase.auth && !firebase.auth().currentUser) await firebase.auth().signInAnonymously(); } catch (e) { console.warn('anon', e); } }).then(() => DB.init(refresh));
+</script>
+</body>
+</html>
